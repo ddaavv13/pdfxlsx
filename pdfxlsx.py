@@ -102,10 +102,22 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#e8f0f8;min-heigh
 .pnav{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:10px}
 .pnav button{padding:6px 16px;border:1px solid #ccc;border-radius:8px;background:#fff;cursor:pointer;font-size:13px;font-weight:600}
 .pnav button:hover{background:#e8f4fd;border-color:#00A3E0}
+.pnav button:disabled{opacity:0.35;cursor:not-allowed;pointer-events:none}
 .pnav span{font-size:13px;color:#555}
+.hbar{border:1px solid #bfdbfe;transition:background 0.3s;border-radius:8px;padding:8px 12px;margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.hbar-icon{font-size:16px;color:#2563eb}
+.hbar-cols{display:flex;gap:4px;flex-wrap:wrap}
+.hcol{background:#dbeafe;color:#1d4ed8;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600}
+.hbar-btn{padding:3px 10px;border:1px solid #93c5fd;border-radius:6px;background:#fff;font-size:11px;cursor:pointer;color:#1d4ed8;margin-left:auto}
+.hbar-btn:hover{background:#eff6ff}
+.hbar.detecting{background:#fff1f2;border-color:#fecdd3}
+.hbar.detected{background:#eff6ff;border-color:#bfdbfe}
+.hbar-btn:disabled{opacity:0.35;cursor:not-allowed;pointer-events:none}
+.hbar-wait{font-size:12px;font-style:italic}.detecting .hbar-wait{color:#be123c;font-size:13px;font-weight:600;font-style:normal}.detected .hbar-wait{color:#6b7280}
 .zone-bar{display:flex;align-items:center;justify-content:space-between;margin-top:10px;gap:10px}
 .clear-btn{padding:5px 12px;border:1px solid #ddd;border-radius:6px;background:#fff;font-size:12px;cursor:pointer;color:#666}
 .clear-btn:hover{background:#fef2f2;border-color:#fca5a5;color:#dc2626}
+.clear-btn:disabled{opacity:0.35;cursor:not-allowed;pointer-events:none}
 .zone-hint{font-size:12px;color:#999;margin-top:8px}
 .zone-list{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
 .zone-tag{background:#fee2e2;color:#b91c1c;padding:3px 10px;border-radius:6px;font-size:11px;display:inline-flex;align-items:center;gap:4px}
@@ -160,7 +172,12 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#e8f0f8;min-heigh
 <span style="font-size:11px;color:#999;margin-left:4px" id="t_langhelp">pour la reconnaissance du texte</span>
 </div>
 <div id="prevSec">
-<div class="stitle">&#128065; <span id="t_prev">Aperçu - tracez les zones à ignorer</span></div>
+<div class="stitle">&#128065; <span id="t_prev">Aperçu</span></div>
+<div id="headerBar" class="hbar" style="display:none">
+<span class="hbar-icon">&#9776;</span>
+<span class="hbar-cols" id="hbarCols"></span>
+<div id="hbarBtns" style="margin-left:auto;display:flex;gap:4px"><button class="hbar-btn" onclick="redetectHeader()" id="t_hsauto">Auto</button><button class="hbar-btn" onclick="moveHeader()" id="t_hsmove">Déplacer</button></div>
+</div>
 <div class="prev-wrap"><canvas id="cv"></canvas></div>
 <div class="pnav">
 <button onclick="cp(-1)">&laquo;</button>
@@ -206,9 +223,64 @@ async function lp(){
 const img=new Image();
 img.onload=()=>{pimg=img;cv.width=img.width;cv.height=img.height;rd()};
 img.src='/preview/'+fid+'/'+pg+'?t='+Date.now();
-document.getElementById('pi').textContent='Page '+pg+'/'+tp}
+document.getElementById('pi').textContent='Page '+pg+'/'+tp;
+if(pg===1&&detectedCols.length===0){autoDetectHeader()}}
+async function autoDetectHeader(){
+document.getElementById('headerBar').style.display='flex';document.getElementById('headerBar').className='hbar detecting';
+document.getElementById('t_hsmove').disabled=true;document.getElementById('t_hsauto').disabled=true;
+document.getElementById('hbarCols').innerHTML='<span class="hbar-wait">'+(uiLang==='fr'?'Détection des en-têtes de colonnes...':'Detecting column headers...')+'</span>';lockUI(true);
+try{const r=await fetch('/auto_detect_header/'+fid+'/1');const d=await r.json();
+if(d.columns&&d.columns.length>=3){
+detectedCols=d.columns;detectedPos=d.positions;headerLineY=d.y;headerPage=pg;
+lockUI(false);showHeaderResult()}
+else{document.getElementById('hbarCols').innerHTML='<span class="hbar-wait">'+(uiLang==='fr'?'Non détecté - cliquez sur la ligne d\'en-tête':'Not detected - click on the header row')+'</span>';headerMode=true;lockUI(false);}
+}catch(e){document.getElementById('hbarCols').innerHTML='<span class="hbar-wait">Erreur</span>'}}
+function showHeaderResult(){
+document.getElementById('headerBar').style.display='flex';document.getElementById('headerBar').className='hbar detected';
+document.getElementById('t_hsmove').disabled=false;document.getElementById('t_hsauto').disabled=false;
+document.getElementById('hbarCols').innerHTML=detectedCols.map(c=>'<span class="hcol">'+c+'</span>').join('');
+headerMode=false;rd()}
+function moveHeader(){
+headerMode=false;movingHeader=true;lockUI(true);
+document.getElementById('cv').style.pointerEvents='auto';
+document.getElementById('cv').style.opacity='1';
+document.getElementById('hbarCols').innerHTML='<span class="hbar-wait">'+(uiLang==='fr'?'Glissez la ligne bleue vers l\'en-tête':'Drag the blue line to the header')+'</span>';
+cv.style.cursor='ns-resize';
+cv.onmousedown=startDragHeader;cv.onmousemove=dragHeader;cv.onmouseup=endDragHeader;
+}
+let draggingHeader=false;let movingHeader=false;
+function startDragHeader(e){draggingHeader=true}
+function dragHeader(e){
+if(!draggingHeader||!pimg)return;
+const r=cv.getBoundingClientRect();
+const y=(e.clientY-r.top)*(cv.height/r.height);
+headerLineY=y/cv.height;
+rd()}
+function endDragHeader(e){
+if(!draggingHeader)return;
+draggingHeader=false;dr=false;ds=null;
+cv.style.cursor='crosshair';
+cv.onmousedown=null;cv.onmousemove=null;cv.onmouseup=null;
+// Re-detect columns at new position
+lockUI(true);
+document.getElementById('headerBar').className='hbar detecting';
+document.getElementById('hbarCols').innerHTML='<span class="hbar-wait">'+(uiLang==='fr'?'Détection...':'Detecting...')+'</span>';
+clickHeader(headerLineY).then(()=>{
+// Restore normal canvas handlers
+restoreCanvasHandlers()})}
+function restoreCanvasHandlers(){movingHeader=false;dr=false;ds=null;
+cv.onmousedown=null;cv.onmousemove=null;cv.onmouseup=null;
+cv.style.cursor='crosshair';
+lockUI(false);
+}
+function redetectHeader(){
+detectedCols=[];detectedPos=[];headerLineY=null;headerPage=1;
+document.getElementById('headerBar').className='hbar detecting';lockUI(true);autoDetectHeader()}
+function redoHeader_legacy(){headerMode=true;detectedCols=[];detectedPos=[];headerLineY=null;headerPage=1;lockUI(false);
+document.getElementById('hbarCols').innerHTML='<span class="hbar-wait">'+(uiLang==='fr'?'Cliquez sur la ligne d\'en-tête du tableau':'Click on the table header row')+'</span>';rd()}
 function cp(d){const p=pg+d;if(p<1||p>tp)return;pg=p;lp()}
 let ez=[];let dr=false;let ds=null;
+let headerMode=false;let uiLocked=false;let detectedCols=[];let detectedPos=[];let headerLineY=null;let headerPage=1;
 const ZCOLORS=[
 {fill:'rgba(220,38,38,0.20)',stroke:'#dc2626',tag:'#fee2e2',text:'#b91c1c'},
 {fill:'rgba(37,99,235,0.20)',stroke:'#2563eb',tag:'#dbeafe',text:'#1d4ed8'},
@@ -246,6 +318,7 @@ const ZCOLORS=[
 function zcolor(i){return ZCOLORS[i%ZCOLORS.length]}
 function rd(){
 if(!pimg)return;cx.drawImage(pimg,0,0);
+if(headerLineY!==null&&pg===headerPage){const hy=headerLineY*cv.height+cv.height*0.008;cx.strokeStyle='#2563eb';cx.lineWidth=2;cx.setLineDash([6,4]);cx.beginPath();cx.moveTo(0,hy);cx.lineTo(cv.width,hy);cx.stroke();cx.setLineDash([]);cx.fillStyle='#2563eb';cx.font='bold 14px system-ui';const htxt=uiLang==='fr'?'En-tête':'Header';cx.fillText(htxt,cv.width-cx.measureText(htxt).width-8,hy-3);}
 for(const z of ez){
 if(z.a||(pg>=z.fromPage&&pg<=z.toPage)){
 const rx=z.x*cv.width,ry=z.y*cv.height,rw=z.w*cv.width,rh=z.h*cv.height;
@@ -290,7 +363,7 @@ else{const z2={p:pg,x:z.x,y:z.y,w:z.w,h:z.h,a:false,fromPage:pg+1,toPage:z.toPag
 rd();return}}
 dr=true;ds={x:sx/cv.width,y:sy/cv.height}});
 cv.addEventListener('mousemove',e=>{
-if(!dr||!ds)return;
+if(!dr||!ds||uiLocked||movingHeader)return;
 const r=cv.getBoundingClientRect();
 const mx=(e.clientX-r.left)*(cv.width/r.width)/cv.width;
 const my=(e.clientY-r.top)*(cv.height/r.height)/cv.height;
@@ -300,7 +373,7 @@ const rw=(mx-ds.x)*cv.width,rh=(my-ds.y)*cv.height;
 const nc=zcolor(ez.length);cx.fillStyle=nc.fill;cx.fillRect(rx,ry,rw,rh);
 cx.strokeStyle=nc.stroke;cx.lineWidth=1.5;cx.setLineDash([5,3]);cx.strokeRect(rx,ry,rw,rh);cx.setLineDash([])});
 cv.addEventListener('mouseup',e=>{
-if(!dr||!ds)return;dr=false;
+if(!dr||!ds||movingHeader)return;dr=false;
 const r=cv.getBoundingClientRect();
 const ex2=(e.clientX-r.left)*(cv.width/r.width)/cv.width;
 const ey2=(e.clientY-r.top)*(cv.height/r.height)/cv.height;
@@ -325,7 +398,7 @@ async function go(){
 const cb=document.getElementById('cb'),bf=document.getElementById('bf'),st=document.getElementById('st'),dl=document.getElementById('dl'),pb=document.getElementById('progBox');
 cb.disabled=true;pb.style.display='block';dl.style.display='none';bf.style.width='0%';st.textContent=uiLang==='fr'?'Envoi...':'Sending...';st.className='stxt';
 try{const r=await fetch('/start',{method:'POST',headers:{'Content-Type':'application/json'},
-body:JSON.stringify({file_id:fid,lang:document.getElementById('lg').value,exclude_zones:ez.map(z=>({p:z.fromPage,x:z.x,y:z.y,w:z.w,h:z.h,a:z.toPage>=tp,fromPage:z.fromPage,toPage:z.toPage}))})});
+body:JSON.stringify({file_id:fid,lang:document.getElementById('lg').value,exclude_zones:ez,header_cols:detectedCols,header_positions:detectedPos.map(z=>({p:z.fromPage,x:z.x,y:z.y,w:z.w,h:z.h,a:z.toPage>=tp,fromPage:z.fromPage,toPage:z.toPage}))})});
 const d=await r.json();if(d.error){st.textContent=d.error;st.className='stxt err';cb.disabled=false;return}
 const jid=d.job_id;currentJobId=jid;document.getElementById('cancelBtn').style.display='block';
 currentTimer=setInterval(async()=>{try{const s=await(await fetch('/status/'+jid)).json();
@@ -336,8 +409,8 @@ else if(s.status==='error'){clearInterval(currentTimer);currentTimer=null;st.tex
 }catch(e){st.textContent=(uiLang==='fr'?'Erreur: ':'Error: ')+e.message;st.className='stxt err';cb.disabled=false}}
 
 const TR={
-fr:{title:'Convertisseur PDF',sel:'Sélectionnez votre fichier PDF',drop:'Glissez votre PDF ici ou <b>cliquez pour parcourir</b>',lang:'Langue du document :',langhelp:'pour la reconnaissance du texte',prev:'Aperçu - tracez les zones à ignorer',conv:'\u2705 Convertir en Excel',cancel:'Annuler',dl:'\ud83d\udce5 Télécharger le fichier Excel',clear:'\ud83d\uddd1 Effacer les zones',hint:'Dessinez un rectangle sur les zones à ignorer',zones:' zone(s) active(s) sur cette page',prep:'Préparation...'},
-en:{title:'PDF Converter',sel:'Select your PDF file',drop:'Drag your PDF here or <b>click to browse</b>',lang:'Document language:',langhelp:'for text recognition',prev:'Preview - draw zones to exclude',conv:'\u2705 Convert to Excel',cancel:'Cancel',dl:'\ud83d\udce5 Download Excel file',clear:'\ud83d\uddd1 Clear zones',hint:'Draw a rectangle on zones to exclude',zones:' active zone(s) on this page',prep:'Preparing...'}
+fr:{title:'Convertisseur PDF → XLSX',sel:'Sélectionnez votre fichier PDF',drop:'Glissez votre PDF ici ou <b>cliquez pour parcourir</b>',lang:'Langue du document :',langhelp:'pour la reconnaissance du texte',prev:'Aperçu - tracez les zones à ignorer',conv:'\u2705 Convertir en Excel',cancel:'Annuler',dl:'\ud83d\udce5 Télécharger le fichier Excel',clear:'\ud83d\uddd1 Effacer les zones',hint:'Dessinez un rectangle sur les zones à ignorer',zones:' zone(s) active(s) sur cette page',prep:'Préparation...'},
+en:{title:'PDF → XLSX Converter',sel:'Select your PDF file',drop:'Drag your PDF here or <b>click to browse</b>',lang:'Document language:',langhelp:'for text recognition',prev:'Preview - draw zones to exclude',conv:'\u2705 Convert to Excel',cancel:'Cancel',dl:'\ud83d\udce5 Download Excel file',clear:'\ud83d\uddd1 Clear zones',hint:'Draw a rectangle on zones to exclude',zones:' active zone(s) on this page',prep:'Preparing...'}
 };
 let uiLang=localStorage.getItem('pdfxlsx_lang')||'fr';
 function setLang(l){
@@ -361,6 +434,31 @@ const of=document.getElementById('opt_fr');if(of)of.textContent=l==='fr'?'Franç
 const oe=document.getElementById('opt_en');if(oe)oe.textContent=l==='fr'?'Anglais':'English';
 }
 setLang(uiLang);
+
+async function clickHeader(relY){
+try{const r=await fetch('/detect_header_at/'+fid+'/'+pg,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({y:relY})});
+const d=await r.json();
+if(d.columns&&d.columns.length>=3){
+detectedCols=d.columns;detectedPos=d.positions;headerLineY=relY;headerMode=false;
+lockUI(false);showHeaderResult()}
+else{showHeaderResult()}}
+catch(e){alert('Error: '+e.message)}}
+
+function lockUI(lock){
+uiLocked=lock;
+document.getElementById('cb').disabled=lock;
+document.getElementById('t_clear').disabled=lock;
+document.getElementById('cv').style.pointerEvents=lock?'none':'auto';
+document.getElementById('cv').style.opacity=lock?'0.6':'1';
+document.getElementById('lg').disabled=lock;
+document.querySelectorAll('.pnav button').forEach(b=>b.disabled=lock);
+document.querySelectorAll('.flag').forEach(f=>f.style.pointerEvents=lock?'none':'auto');
+document.getElementById('dz').style.pointerEvents=lock?'none':'auto';
+document.getElementById('dz').style.opacity=lock?'0.6':'1';
+document.getElementById('fi').disabled=lock;
+var hm=document.getElementById('t_hsmove');if(hm)hm.disabled=lock;
+var ha=document.getElementById('t_hsauto');if(ha)ha.disabled=lock;
+}
 </script>
 </body></html>
 """
@@ -749,7 +847,7 @@ def looks_like_header(text: str) -> bool:
         return True
     return False
 
-def extract_rows(pdf_bytes: bytes, lang: str, job_id: str, ocr_mode: str, exclude_zones: list = None) -> Dict[str, Any]:
+def extract_rows(pdf_bytes: bytes, lang: str, job_id: str, ocr_mode: str, exclude_zones: list = None, header_cols: list = None, header_positions: list = None) -> Dict[str, Any]:
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     total_pages = len(doc)
     if total_pages == 0:
@@ -833,7 +931,18 @@ def extract_rows(pdf_bytes: bytes, lang: str, job_id: str, ocr_mode: str, exclud
     doc.close()
 
     set_job(job_id, progress=78, message="Détection des colonnes...")
-    pos = detect_column_positions(all_lines)
+    if header_cols and header_positions and len(header_cols) == len(header_positions):
+        # Generic mode: user-selected or auto-detected columns
+        print(f"  Using {len(header_cols)} user/auto columns: {header_cols}", flush=True)
+        # Build pos dict with column names as keys
+        generic_mode = True
+        col_names = header_cols
+        col_pos = header_positions
+    else:
+        generic_mode = False
+        pos = detect_column_positions(all_lines)
+        col_names = None
+        col_pos = None
 
     rows: List[Dict[str, Any]] = []
     current: Optional[Dict[str, str]] = None
@@ -847,6 +956,38 @@ def extract_rows(pdf_bytes: bytes, lang: str, job_id: str, ocr_mode: str, exclud
         if looks_like_header(line["text"]):
             continue
 
+        if generic_mode:
+            cells_g = {}
+            n = len(col_names)
+            for w in line["words"]:
+                x = w["xc"]
+                best_col = col_names[0]
+                best_dist = float('inf')
+                for i in range(n):
+                    left = (col_pos[i-1]+col_pos[i])/2 if i>0 else 0
+                    right = (col_pos[i]+col_pos[i+1])/2 if i+1<n else 10000
+                    mid = (left+right)/2
+                    dist = abs(x-mid)
+                    if dist < best_dist:
+                        best_dist = dist
+                        best_col = col_names[i]
+                cells_g[best_col] = safe_excel_text((cells_g.get(best_col,"") + " " + w["text"]).strip())
+            # Skip if empty
+            if not any(v.strip() for v in cells_g.values()):
+                continue
+            # Skip repeated headers
+            if all(cells_g.get(cn,"").strip() == cn for cn in col_names if cells_g.get(cn,"").strip()):
+                continue
+            # Smart alignment: if first column has non-date text and second column is empty,
+            # shift content from first to second (e.g., 'Ancien Solde au' misplaced in Date column)
+            if len(col_names) >= 2:
+                first_val = cells_g.get(col_names[0], "").strip()
+                second_val = cells_g.get(col_names[1], "").strip()
+                if first_val and not second_val and not DATE_RE.search(first_val) and not AMOUNT_RE.search(first_val):
+                    cells_g[col_names[1]] = first_val
+                    cells_g[col_names[0]] = ""
+            rows.append({"page": line["page"], **cells_g})
+            continue
         cells = normalize_row(split_by_boundaries(line["words"], pos))
 
         line_has_date_op = bool(DATE_RE.fullmatch(cells["date_op"]))
@@ -902,28 +1043,39 @@ def extract_rows(pdf_bytes: bytes, lang: str, job_id: str, ocr_mode: str, exclud
     if current and any(current.values()):
         rows.append({"page": all_lines[-1]["page"] if all_lines else 1, **current})
 
-    return {"rows": rows, "used_mode": used_mode or ocr_mode}
+    result = {"rows": rows, "used_mode": used_mode or ocr_mode}
+    if generic_mode:
+        result["col_names"] = col_names
+    return result
 
 def build_workbook(data: Dict[str, Any]) -> Workbook:
     wb = Workbook()
     ws = wb.active
     ws.title = "Donnees"
 
-    headers = ["Page", "Date opération", "Libellé", "Date de valeur", "Débit", "Crédit", "Solde"]
+    # Use generic columns if available, otherwise default
+    generic_cols = data.get("col_names")
+    if generic_cols:
+        headers = ["Page"] + generic_cols
+    else:
+        headers = ["Page", "Date opération", "Libellé", "Date de valeur", "Débit", "Crédit", "Solde"]
     ws.append(headers)
     for cell in ws[1]:
         cell.font = Font(bold=True)
 
     for row in data["rows"]:
-        ws.append([
-            row.get("page", ""),
-            safe_excel_text(row.get("date_operation", "")),
-            safe_excel_text(row.get("libelle", "")),
-            safe_excel_text(row.get("date_valeur", "")),
-            safe_excel_text(row.get("debit", "")),
-            safe_excel_text(row.get("credit", "")),
-            safe_excel_text(row.get("solde", "")),
-        ])
+        if generic_cols:
+            ws.append([row.get("page", "")] + [safe_excel_text(row.get(col, "")) for col in generic_cols])
+        else:
+            ws.append([
+                row.get("page", ""),
+                safe_excel_text(row.get("date_operation", "")),
+                safe_excel_text(row.get("libelle", "")),
+                safe_excel_text(row.get("date_valeur", "")),
+                safe_excel_text(row.get("debit", "")),
+                safe_excel_text(row.get("credit", "")),
+                safe_excel_text(row.get("solde", "")),
+            ])
 
     widths = {"A": 8, "B": 16, "C": 52, "D": 16, "E": 14, "F": 14, "G": 18}
     for col, width in widths.items():
@@ -938,10 +1090,10 @@ def build_workbook(data: Dict[str, Any]) -> Workbook:
 
     return wb
 
-def process_job(job_id: str, pdf_bytes: bytes, filename: str, lang: str, ocr_mode: str, exclude_zones: list = None) -> None:
+def process_job(job_id: str, pdf_bytes: bytes, filename: str, lang: str, ocr_mode: str, exclude_zones: list = None, header_cols: list = None, header_positions: list = None) -> None:
     try:
         set_job(job_id, status="running", progress=2, message="Ouverture du PDF...")
-        data = extract_rows(pdf_bytes, lang=lang, job_id=job_id, ocr_mode=ocr_mode, exclude_zones=exclude_zones or [])
+        data = extract_rows(pdf_bytes, lang=lang, job_id=job_id, ocr_mode=ocr_mode, exclude_zones=exclude_zones or [], header_cols=header_cols, header_positions=header_positions)
 
         set_job(job_id, progress=97, message=f"Création du fichier XLSX... (mode utilisé: {data.get('used_mode', ocr_mode)})")
         wb = build_workbook(data)
@@ -1020,6 +1172,105 @@ def preview(file_id: str, page: int):
     img_bytes = pix.tobytes("png")
     return Response(img_bytes, mimetype="image/png")
 
+
+@app.get("/auto_detect_header/<file_id>/<int:page>")
+def auto_detect_header(file_id: str, page: int):
+    """Auto-detect the table header line on a page via OCR."""
+    info = UPLOADS.get(file_id)
+    if not info:
+        return jsonify({"columns":[],"positions":[],"y":0})
+    try:
+        doc = fitz.open(info["path"])
+        pg = doc[page - 1]
+        page_h = pg.rect.height
+        pix = pg.get_pixmap(dpi=200, alpha=False)
+        img_np = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.height, pix.width, 3)
+        reader = get_easyocr_reader("fr")
+        results = reader.readtext(img_np)
+        scale = 72.0 / 200
+        doc.close()
+        # Build words with positions
+        words = []
+        for bbox, text, conf in results:
+            if not text.strip() or conf < 0.15: continue
+            x0, x1 = bbox[0][0]*scale, bbox[2][0]*scale
+            yc = ((bbox[0][1]+bbox[2][1])/2)*scale
+            words.append({"text":text,"x0":x0,"xc":(x0+x1)/2,"yc":yc})
+        words.sort(key=lambda w:(w["yc"],w["x0"]))
+        # Group into lines
+        lines = []
+        cur = []
+        for w in words:
+            if not cur or abs(w["yc"]-statistics.median(cw["yc"] for cw in cur))<=8:
+                cur.append(w)
+            else:
+                lines.append(sorted(cur, key=lambda x:x["x0"]))
+                cur = [w]
+        if cur: lines.append(sorted(cur, key=lambda x:x["x0"]))
+        # Score lines: best header = ALL words are text (no numbers/dates), max words*spread
+        best = None
+        best_score = 0
+        best_y = 0
+        for line in lines:
+            if len(line)<3: continue
+            has_num = any(DATE_RE.search(w["text"]) or AMOUNT_RE.search(w["text"]) or re.match(r"^[\d.,/]+$",w["text"].strip()) for w in line)
+            if has_num: continue
+            ltxt = " ".join(w["text"] for w in line).lower()
+            if "http" in ltxt: continue
+            # Header words are typically short (< 20 chars avg)
+            avg_len = sum(len(w["text"]) for w in line) / len(line)
+            if avg_len > 20: continue
+            # Header words should be unique (not repeating like "VIR SEPA ...")
+            texts = [w["text"].lower() for w in line]
+            if len(set(texts)) < len(texts) * 0.7: continue
+            xs=[w["xc"] for w in line]
+            # Prefer lines closer to top of page (headers are usually near top)
+            avg_y = sum(w["yc"] for w in line) / len(line)
+            y_bonus = max(0, 1.0 - avg_y / page_h) 
+            score=len(line)*(max(xs)-min(xs)) * (1 + y_bonus)
+            if score>best_score:
+                best_score=score
+                best=line
+                best_y=statistics.median(w["yc"] for w in line)
+        if best:
+            return jsonify({"columns":[w["text"] for w in best],"positions":[w["x0"] for w in best],"y":best_y/page_h})
+    except Exception as e:
+        print(f"  Auto-detect error: {e}", flush=True)
+    return jsonify({"columns":[],"positions":[],"y":0})
+
+@app.post("/detect_header_at/<file_id>/<int:page>")
+def detect_header_at(file_id: str, page: int):
+    """Detect columns at a specific Y position (user click)."""
+    info = UPLOADS.get(file_id)
+    if not info:
+        return jsonify({"columns":[],"positions":[]})
+    body = request.get_json()
+    rel_y = body.get("y", 0.5)
+    try:
+        doc = fitz.open(info["path"])
+        pg = doc[page - 1]
+        page_h = pg.rect.height
+        target_y = rel_y * page_h
+        tol = page_h * 0.01
+        pix = pg.get_pixmap(dpi=200, alpha=False)
+        img_np = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.height, pix.width, 3)
+        reader = get_easyocr_reader("fr")
+        results = reader.readtext(img_np)
+        scale = 72.0 / 200
+        doc.close()
+        hw = []
+        for bbox, text, conf in results:
+            if not text.strip() or conf < 0.15: continue
+            yc = ((bbox[0][1]+bbox[2][1])/2)*scale
+            if abs(yc - target_y) <= tol:
+
+                x0 = bbox[0][0]*scale
+                hw.append({"text":text,"x0":x0})
+        hw.sort(key=lambda w:w["x0"])
+        return jsonify({"columns":[w["text"] for w in hw],"positions":[w["x0"] for w in hw]})
+    except Exception as e:
+        return jsonify({"columns":[],"positions":[]})
+
 @app.post("/start")
 def start():
     """Start conversion. Accepts JSON (new) or form data (legacy)."""
@@ -1029,6 +1280,8 @@ def start():
         file_id = body.get("file_id")
         lang = body.get("lang", "fr")
         exclude_zones = body.get("exclude_zones", [])
+        header_cols = body.get("header_cols", [])
+        header_positions = body.get("header_positions", [])
 
         info = UPLOADS.get(file_id)
         if not info:
