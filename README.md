@@ -10,7 +10,7 @@ Convert PDF bank statements to Excel spreadsheets with OCR support.
 - **Page range extension** — apply zones to following or previous pages
 - **Cancel** long conversions
 - **FR/EN** interface with language switcher
-- **Auto column detection** for French bank statements (Caisse d'Epargne, etc.)
+- **Auto column detection** for structured PDF tables
 
 ## Quick Start
 
