@@ -939,10 +939,47 @@ def extract_rows(pdf_bytes: bytes, lang: str, job_id: str, ocr_mode: str, exclud
         col_names = header_cols
         col_pos = header_positions
     else:
-        generic_mode = False
-        pos = detect_column_positions(all_lines)
-        col_names = None
-        col_pos = None
+        # Auto-detect from lines: find the best header line
+        print("  No header_cols provided, auto-detecting from lines...", flush=True)
+        best_line = None
+        best_score = 0
+        for line in all_lines[:40]:
+            words = line["words"]
+            if len(words) < 3:
+                continue
+            has_num = any(DATE_RE.search(w["text"]) or AMOUNT_RE.search(w["text"]) or re.match(r"^[\d.,/]+$", w["text"].strip()) for w in words)
+            if has_num:
+                continue
+            ltxt = " ".join(w["text"] for w in words).lower()
+            if "http" in ltxt:
+                continue
+            avg_len = sum(len(w["text"]) for w in words) / len(words)
+            if avg_len > 20:
+                continue
+            texts = [w["text"].lower() for w in words]
+            if len(set(texts)) < len(texts) * 0.7:
+                continue
+            xs = [w["xc"] for w in words]
+            ys = [w["yc"] for w in words]
+            if len(ys) > 1 and (max(ys) - min(ys)) > 5:
+                continue
+            score = len(words) * (max(xs) - min(xs))
+            if score > best_score:
+                best_score = score
+                best_line = line
+
+        if best_line:
+            generic_mode = True
+            col_names = [w["text"] for w in sorted(best_line["words"], key=lambda w: w["x0"])]
+            col_pos = [w["x0"] for w in sorted(best_line["words"], key=lambda w: w["x0"])]
+            print(f"  Auto-detected {len(col_names)} columns: {col_names}", flush=True)
+        else:
+            # Last resort fallback
+            generic_mode = False
+            pos = detect_column_positions(all_lines)
+            col_names = None
+            col_pos = None
+            print("  Could not auto-detect, using legacy fallback", flush=True)
 
     rows: List[Dict[str, Any]] = []
     current: Optional[Dict[str, str]] = None
