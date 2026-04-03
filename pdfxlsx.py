@@ -141,7 +141,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#e8f0f8;min-heigh
 <div class="header-inner">
 
 <div class="title-wrap"><h1 id="title">Convertisseur PDF</h1></div>
-<div class="lang-switch"><span class="flag active" onclick="setLang('fr')" id="flagFr" title="Francais">&#127467;&#127479;</span><span class="flag" onclick="setLang('en')" id="flagEn" title="English">&#127468;&#127463;</span></div>
+<div class="lang-switch"><span class="flag" onclick="setLang('en')" id="flagEn" title="English">&#127468;&#127463;</span><span class="flag active" onclick="setLang('fr')" id="flagFr" title="Francais">&#127467;&#127479;</span></div>
 </div>
 <div class="card">
 <div class="stitle">&#128196; <span id="t_sel">Selectionnez votre fichier PDF</span></div>
@@ -154,8 +154,8 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#e8f0f8;min-heigh
 <div class="lang-row">
 <label id="t_lang">Langue du document :</label>
 <select id="lg">
-<option value="fr" selected>Francais</option>
-<option value="en">Anglais</option>
+<option value="fr" selected id="opt_fr">Francais</option>
+<option value="en" id="opt_en">Anglais</option>
 </select>
 <span style="font-size:11px;color:#999;margin-left:4px" id="t_langhelp">pour la reconnaissance du texte</span>
 </div>
@@ -175,13 +175,13 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#e8f0f8;min-heigh
 <div class="zone-list" id="zl"></div>
 
 </div>
-<button class="cbtn" id="cb" onclick="go()" disabled id="t_conv">&#9989; Convertir en Excel</button>
+<button class="cbtn" id="cb" onclick="go()" disabled>&#9989; Convertir en Excel</button>
 <div id="progBox">
 <div class="bwrap"><div class="bfill" id="bf"></div></div>
 <div class="stxt" id="st">Preparation...</div>
-<button class="cancel-btn" id="cancelBtn" onclick="cancelJob()" style="display:none" id="t_cancel">Annuler</button>
+<button class="cancel-btn" id="cancelBtn" onclick="cancelJob()" style="display:none">Annuler</button>
 </div>
-<a class="dlb" id="dl" href="#" id="t_dl">&#128229; Telecharger le fichier Excel</a>
+<a class="dlb" id="dl" href="#">&#128229; Telecharger le fichier Excel</a>
 </div>
 
 <script>
@@ -217,24 +217,25 @@ const rx=z.x*cv.width,ry=z.y*cv.height,rw=z.w*cv.width,rh=z.h*cv.height;
 cx.fillStyle='rgba(220,38,38,0.22)';cx.fillRect(rx,ry,rw,rh);
 cx.strokeStyle='#dc2626';cx.lineWidth=1.5;cx.strokeRect(rx,ry,rw,rh);
 cx.fillStyle='#dc2626';cx.font='11px system-ui';
-cx.fillText(z.fromPage===z.toPage?'Page '+z.fromPage:'Pages '+z.fromPage+'-'+z.toPage,rx+4,ry+13);
+cx.fillText(z.fromPage===z.toPage?'Page '+z.fromPage:(uiLang==='fr'?'Pages ':'Pages ')+z.fromPage+'-'+z.toPage,rx+4,ry+13);
 cx.font='bold 15px system-ui';cx.fillText('\u00d7',rx+rw-14,ry+14)}}
 updateZL()}
 function updateZL(){
 const el=document.getElementById('zl');
 el.innerHTML=ez.map((z,i)=>{
-const range=z.fromPage===z.toPage?'page '+z.fromPage:'pages '+z.fromPage+' a '+z.toPage;
+const f=uiLang==='fr';
+const range=z.fromPage===z.toPage?'page '+z.fromPage:'pages '+z.fromPage+(f?' a ':' to ')+z.toPage;
 const canBack=z.fromPage>1;
 const canFwd=(z.toPage||z.fromPage)<tp;
 let html='<span class="zone-tag">';
-if(canBack)html+='<span class="zbtn zback" onclick="extendBack('+i+')" title="Etendre aux pages precedentes">&#9664; p.1</span> ';
+if(canBack)html+='<span class="zbtn zback" onclick="extendBack('+i+')" title="'+(f?'Etendre aux pages precedentes':'Extend to previous pages')+'">&#9664; p.1</span> ';
 html+='<b>Zone '+(i+1)+'</b> <span class="zrange">('+range+')</span> ';
-if(canFwd)html+='<span class="zbtn zfwd" onclick="extendZone('+i+')" title="Etendre aux pages suivantes">p.'+tp+' &#9654;</span> ';
-html+='<span class="zbtn zdel" onclick="rmz('+i+')" title="Supprimer">&#10005;</span>';
+if(canFwd)html+='<span class="zbtn zfwd" onclick="extendZone('+i+')" title="'+(f?'Etendre aux pages suivantes':'Extend to next pages')+'">p.'+tp+' &#9654;</span> ';
+html+='<span class="zbtn zdel" onclick="rmz('+i+')" title="'+(f?'Supprimer':'Delete')+'">&#10005;</span>';
 html+='</span>';
 return html}).join('');
 const active=ez.filter(z=>z.a||(pg>=z.fromPage&&pg<=z.toPage)).length;
-document.getElementById('zh').textContent=ez.length?active+' zone(s) active(s) sur cette page':'Dessinez un rectangle sur les zones a ignorer'}
+document.getElementById('zh').textContent=ez.length?(active+(uiLang==='fr'?' zone(s) active(s) sur cette page':' active zone(s) on this page')):(uiLang==='fr'?'Dessinez un rectangle sur les zones a ignorer':'Draw a rectangle on zones to exclude')}
 function extendZone(i){ez[i].toPage=tp;ez[i].a=false;rd()}
 function extendBack(i){ez[i].fromPage=1;ez[i].a=false;rd()}
 function rmz(i){ez.splice(i,1);rd()}
@@ -282,25 +283,25 @@ document.getElementById('cb').disabled=false;
 document.getElementById('bf').style.width='0%'}
 async function go(){
 const cb=document.getElementById('cb'),bf=document.getElementById('bf'),st=document.getElementById('st'),dl=document.getElementById('dl'),pb=document.getElementById('progBox');
-cb.disabled=true;pb.style.display='block';dl.style.display='none';bf.style.width='0%';st.textContent='Envoi...';st.className='stxt';
+cb.disabled=true;pb.style.display='block';dl.style.display='none';bf.style.width='0%';st.textContent=uiLang==='fr'?'Envoi...':'Sending...';st.className='stxt';
 try{const r=await fetch('/start',{method:'POST',headers:{'Content-Type':'application/json'},
 body:JSON.stringify({file_id:fid,lang:document.getElementById('lg').value,exclude_zones:ez.map(z=>({p:z.fromPage,x:z.x,y:z.y,w:z.w,h:z.h,a:z.toPage>=tp,fromPage:z.fromPage,toPage:z.toPage}))})});
 const d=await r.json();if(d.error){st.textContent=d.error;st.className='stxt err';cb.disabled=false;return}
 const jid=d.job_id;currentJobId=jid;document.getElementById('cancelBtn').style.display='block';
 currentTimer=setInterval(async()=>{try{const s=await(await fetch('/status/'+jid)).json();
 bf.style.width=(s.progress||0)+'%';st.textContent=s.message||'';st.className='stxt';
-if(s.status==='done'){clearInterval(currentTimer);currentTimer=null;bf.style.width='100%';st.textContent='Conversion terminee !';document.getElementById('cancelBtn').style.display='none';currentJobId=null;st.className='stxt ok';dl.href='/download/'+jid;dl.style.display='block';cb.disabled=false}
+if(s.status==='done'){clearInterval(currentTimer);currentTimer=null;bf.style.width='100%';st.textContent=uiLang==='fr'?'Conversion terminee !':'Conversion complete!';document.getElementById('cancelBtn').style.display='none';currentJobId=null;st.className='stxt ok';dl.href='/download/'+jid;dl.style.display='block';cb.disabled=false}
 else if(s.status==='error'){clearInterval(currentTimer);currentTimer=null;st.textContent=s.error||'Erreur';st.className='stxt err';cb.disabled=false;document.getElementById('cancelBtn').style.display='none';currentJobId=null}
-}catch(e){clearInterval(currentTimer);currentTimer=null;st.textContent='Connexion perdue';st.className='stxt err';cb.disabled=false}},2000);
+}catch(e){clearInterval(currentTimer);currentTimer=null;st.textContent=uiLang==='fr'?'Connexion perdue':'Connection lost';st.className='stxt err';cb.disabled=false}},2000);
 }catch(e){st.textContent='Erreur: '+e.message;st.className='stxt err';cb.disabled=false}}
 
 const TR={
 fr:{title:'Convertisseur PDF',sel:'Selectionnez votre fichier PDF',drop:'Glissez votre PDF ici ou <b>cliquez pour parcourir</b>',lang:'Langue du document :',langhelp:'pour la reconnaissance du texte',prev:'Apercu - tracez les zones a ignorer',conv:'\u2705 Convertir en Excel',cancel:'Annuler',dl:'\ud83d\udce5 Telecharger le fichier Excel',clear:'\ud83d\uddd1 Effacer les zones',hint:'Dessinez un rectangle sur les zones a ignorer',zones:' zone(s) active(s) sur cette page',prep:'Preparation...'},
 en:{title:'PDF Converter',sel:'Select your PDF file',drop:'Drag your PDF here or <b>click to browse</b>',lang:'Document language:',langhelp:'for text recognition',prev:'Preview - draw zones to exclude',conv:'\u2705 Convert to Excel',cancel:'Cancel',dl:'\ud83d\udce5 Download Excel file',clear:'\ud83d\uddd1 Clear zones',hint:'Draw a rectangle on zones to exclude',zones:' active zone(s) on this page',prep:'Preparing...'}
 };
-let uiLang='fr';
+let uiLang=localStorage.getItem('pdfxlsx_lang')||'fr';
 function setLang(l){
-uiLang=l;
+uiLang=l;localStorage.setItem('pdfxlsx_lang',l);
 document.getElementById('flagFr').className='flag'+(l==='fr'?' active':'');
 document.getElementById('flagEn').className='flag'+(l==='en'?' active':'');
 const t=TR[l];
@@ -310,11 +311,16 @@ const d=document.getElementById('t_drop');if(d)d.innerHTML=t.drop;
 const lg=document.getElementById('t_lang');if(lg)lg.textContent=t.lang;
 const lh=document.getElementById('t_langhelp');if(lh)lh.textContent=t.langhelp;
 const p=document.getElementById('t_prev');if(p)p.textContent=t.prev;
-const cv=document.getElementById('t_conv');if(cv)cv.innerHTML=t.conv;
-const ca=document.getElementById('t_cancel');if(ca)ca.textContent=t.cancel;
-const dl=document.getElementById('t_dl');if(dl)dl.innerHTML=t.dl;
+const cv=document.getElementById('cb');if(cv)cv.innerHTML=t.conv;
+const ca=document.getElementById('cancelBtn');if(ca)ca.textContent=t.cancel;
+const dlb=document.getElementById('dl');if(dlb)dlb.innerHTML=t.dl;
 const cl=document.getElementById('t_clear');if(cl)cl.innerHTML=t.clear;
+const zh=document.getElementById('zh');if(zh&&!ez.length)zh.textContent=t.hint;
+if(typeof rd==='function'&&typeof ez!=='undefined')try{rd()}catch(e){}
+const of=document.getElementById('opt_fr');if(of)of.textContent=l==='fr'?'Francais':'French';
+const oe=document.getElementById('opt_en');if(oe)oe.textContent=l==='fr'?'Anglais':'English';
 }
+setLang(uiLang);
 </script>
 </body></html>
 """
