@@ -141,10 +141,10 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#e8f0f8;min-heigh
 <div class="header-inner">
 
 <div class="title-wrap"><h1 id="title">Convertisseur PDF</h1></div>
-<div class="lang-switch"><span class="flag" onclick="setLang('en')" id="flagEn" title="English">&#127468;&#127463;</span><span class="flag active" onclick="setLang('fr')" id="flagFr" title="Francais">&#127467;&#127479;</span></div>
+<div class="lang-switch"><span class="flag" onclick="setLang('en')" id="flagEn" title="English">&#127468;&#127463;</span><span class="flag active" onclick="setLang('fr')" id="flagFr" title="Français">&#127467;&#127479;</span></div>
 </div>
 <div class="card">
-<div class="stitle">&#128196; <span id="t_sel">Selectionnez votre fichier PDF</span></div>
+<div class="stitle">&#128196; <span id="t_sel">Sélectionnez votre fichier PDF</span></div>
 <div class="drop-zone" id="dz" onclick="document.getElementById('fi').click()">
 <div class="icon">&#128206;</div>
 <p><span id="t_drop">Glissez votre PDF ici ou <b>cliquez pour parcourir</b></span></p>
@@ -154,13 +154,13 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#e8f0f8;min-heigh
 <div class="lang-row">
 <label id="t_lang">Langue du document :</label>
 <select id="lg">
-<option value="fr" selected id="opt_fr">Francais</option>
+<option value="fr" selected id="opt_fr">Français</option>
 <option value="en" id="opt_en">Anglais</option>
 </select>
 <span style="font-size:11px;color:#999;margin-left:4px" id="t_langhelp">pour la reconnaissance du texte</span>
 </div>
 <div id="prevSec">
-<div class="stitle">&#128065; <span id="t_prev">Apercu - tracez les zones a ignorer</span></div>
+<div class="stitle">&#128065; <span id="t_prev">Aperçu - tracez les zones à ignorer</span></div>
 <div class="prev-wrap"><canvas id="cv"></canvas></div>
 <div class="pnav">
 <button onclick="cp(-1)">&laquo;</button>
@@ -171,17 +171,17 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#e8f0f8;min-heigh
 
 <button class="clear-btn" onclick="clearZones()" id="t_clear">&#128465; Effacer les zones</button>
 </div>
-<div class="zone-hint" id="zh">Dessinez un rectangle sur les zones a ignorer (en-tetes, logos, pieds de page)</div>
+<div class="zone-hint" id="zh">Dessinez un rectangle sur les zones à ignorer (en-tetes, logos, pieds de page)</div>
 <div class="zone-list" id="zl"></div>
 
 </div>
 <button class="cbtn" id="cb" onclick="go()" disabled>&#9989; Convertir en Excel</button>
 <div id="progBox">
 <div class="bwrap"><div class="bfill" id="bf"></div></div>
-<div class="stxt" id="st">Preparation...</div>
+<div class="stxt" id="st">Préparation...</div>
 <button class="cancel-btn" id="cancelBtn" onclick="cancelJob()" style="display:none">Annuler</button>
 </div>
-<a class="dlb" id="dl" href="#">&#128229; Telecharger le fichier Excel</a>
+<a class="dlb" id="dl" href="#">&#128229; Télécharger le fichier Excel</a>
 </div>
 
 <script>
@@ -201,7 +201,7 @@ if(d.error){alert(d.error);return}
 fid=d.file_id;tp=d.total_pages;pg=1;ez=[];
 document.getElementById('prevSec').style.display='block';
 document.getElementById('cb').disabled=false;lp();
-}catch(e){alert('Erreur: '+e.message)}}
+}catch(e){alert((uiLang==='fr'?'Erreur: ':'Error: ')+e.message)}}
 async function lp(){
 const img=new Image();
 img.onload=()=>{pimg=img;cv.width=img.width;cv.height=img.height;rd()};
@@ -209,14 +209,49 @@ img.src='/preview/'+fid+'/'+pg+'?t='+Date.now();
 document.getElementById('pi').textContent='Page '+pg+'/'+tp}
 function cp(d){const p=pg+d;if(p<1||p>tp)return;pg=p;lp()}
 let ez=[];let dr=false;let ds=null;
+const ZCOLORS=[
+{fill:'rgba(220,38,38,0.20)',stroke:'#dc2626',tag:'#fee2e2',text:'#b91c1c'},
+{fill:'rgba(37,99,235,0.20)',stroke:'#2563eb',tag:'#dbeafe',text:'#1d4ed8'},
+{fill:'rgba(22,163,74,0.20)',stroke:'#16a34a',tag:'#dcfce7',text:'#15803d'},
+{fill:'rgba(234,88,12,0.20)',stroke:'#ea580c',tag:'#ffedd5',text:'#c2410c'},
+{fill:'rgba(147,51,234,0.20)',stroke:'#9333ea',tag:'#f3e8ff',text:'#7e22ce'},
+{fill:'rgba(6,182,212,0.20)',stroke:'#06b6d4',tag:'#cffafe',text:'#0891b2'},
+{fill:'rgba(236,72,153,0.20)',stroke:'#ec4899',tag:'#fce7f3',text:'#be185d'},
+{fill:'rgba(202,138,4,0.20)',stroke:'#ca8a04',tag:'#fef9c3',text:'#a16207'},
+{fill:'rgba(79,70,229,0.20)',stroke:'#4f46e5',tag:'#e0e7ff',text:'#4338ca'},
+{fill:'rgba(5,150,105,0.20)',stroke:'#059669',tag:'#d1fae5',text:'#047857'},
+{fill:'rgba(239,68,68,0.20)',stroke:'#ef4444',tag:'#fee2e2',text:'#dc2626'},
+{fill:'rgba(245,158,11,0.20)',stroke:'#f59e0b',tag:'#fef3c7',text:'#d97706'},
+{fill:'rgba(168,85,247,0.20)',stroke:'#a855f7',tag:'#ede9fe',text:'#7c3aed'},
+{fill:'rgba(20,184,166,0.20)',stroke:'#14b8a6',tag:'#ccfbf1',text:'#0d9488'},
+{fill:'rgba(244,63,94,0.20)',stroke:'#f43f5e',tag:'#ffe4e6',text:'#e11d48'},
+{fill:'rgba(132,204,22,0.20)',stroke:'#84cc16',tag:'#ecfccb',text:'#65a30d'},
+{fill:'rgba(99,102,241,0.20)',stroke:'#6366f1',tag:'#e0e7ff',text:'#4f46e5'},
+{fill:'rgba(249,115,22,0.20)',stroke:'#f97316',tag:'#fff7ed',text:'#ea580c'},
+{fill:'rgba(34,197,94,0.20)',stroke:'#22c55e',tag:'#dcfce7',text:'#16a34a'},
+{fill:'rgba(217,70,239,0.20)',stroke:'#d946ef',tag:'#fae8ff',text:'#c026d3'},
+{fill:'rgba(14,165,233,0.20)',stroke:'#0ea5e9',tag:'#e0f2fe',text:'#0284c7'},
+{fill:'rgba(251,146,60,0.20)',stroke:'#fb923c',tag:'#ffedd5',text:'#ea580c'},
+{fill:'rgba(52,211,153,0.20)',stroke:'#34d399',tag:'#d1fae5',text:'#059669'},
+{fill:'rgba(192,38,211,0.20)',stroke:'#c026d3',tag:'#fae8ff',text:'#a21caf'},
+{fill:'rgba(56,189,248,0.20)',stroke:'#38bdf8',tag:'#e0f2fe',text:'#0284c7'},
+{fill:'rgba(163,230,53,0.20)',stroke:'#a3e635',tag:'#ecfccb',text:'#65a30d'},
+{fill:'rgba(251,113,133,0.20)',stroke:'#fb7185',tag:'#ffe4e6',text:'#e11d48'},
+{fill:'rgba(45,212,191,0.20)',stroke:'#2dd4bf',tag:'#ccfbf1',text:'#0d9488'},
+{fill:'rgba(253,186,116,0.20)',stroke:'#fdba74',tag:'#fff7ed',text:'#c2410c'},
+{fill:'rgba(129,140,248,0.20)',stroke:'#818cf8',tag:'#e0e7ff',text:'#4338ca'},
+{fill:'rgba(74,222,128,0.20)',stroke:'#4ade80',tag:'#dcfce7',text:'#15803d'},
+{fill:'rgba(232,121,249,0.20)',stroke:'#e879f9',tag:'#fae8ff',text:'#a21caf'},
+];
+function zcolor(i){return ZCOLORS[i%ZCOLORS.length]}
 function rd(){
 if(!pimg)return;cx.drawImage(pimg,0,0);
 for(const z of ez){
 if(z.a||(pg>=z.fromPage&&pg<=z.toPage)){
 const rx=z.x*cv.width,ry=z.y*cv.height,rw=z.w*cv.width,rh=z.h*cv.height;
-cx.fillStyle='rgba(220,38,38,0.22)';cx.fillRect(rx,ry,rw,rh);
-cx.strokeStyle='#dc2626';cx.lineWidth=1.5;cx.strokeRect(rx,ry,rw,rh);
-cx.fillStyle='#dc2626';cx.font='11px system-ui';
+const zc=zcolor(ez.indexOf(z));cx.fillStyle=zc.fill;cx.fillRect(rx,ry,rw,rh);
+cx.strokeStyle=zc.stroke;cx.lineWidth=1.5;cx.strokeRect(rx,ry,rw,rh);
+cx.fillStyle=zc.stroke;cx.font='11px system-ui';
 cx.fillText(z.fromPage===z.toPage?'Page '+z.fromPage:(uiLang==='fr'?'Pages ':'Pages ')+z.fromPage+'-'+z.toPage,rx+4,ry+13);
 cx.font='bold 15px system-ui';cx.fillText('\u00d7',rx+rw-14,ry+14)}}
 updateZL()}
@@ -224,18 +259,18 @@ function updateZL(){
 const el=document.getElementById('zl');
 el.innerHTML=ez.map((z,i)=>{
 const f=uiLang==='fr';
-const range=z.fromPage===z.toPage?'page '+z.fromPage:'pages '+z.fromPage+(f?' a ':' to ')+z.toPage;
+const range=z.fromPage===z.toPage?'page '+z.fromPage:'pages '+z.fromPage+(f?' à ':' to ')+z.toPage;
 const canBack=z.fromPage>1;
 const canFwd=(z.toPage||z.fromPage)<tp;
-let html='<span class="zone-tag">';
-if(canBack)html+='<span class="zbtn zback" onclick="extendBack('+i+')" title="'+(f?'Etendre aux pages precedentes':'Extend to previous pages')+'">&#9664; p.1</span> ';
+const zc=zcolor(i);let html='<span class="zone-tag" style="background:'+zc.tag+';color:'+zc.text+'">';
+if(canBack)html+='<span class="zbtn zback" onclick="extendBack('+i+')" title="'+(f?'Étendre aux pages précédentes':'Extend to previous pages')+'">&#9664; p.1</span> ';
 html+='<b>Zone '+(i+1)+'</b> <span class="zrange">('+range+')</span> ';
-if(canFwd)html+='<span class="zbtn zfwd" onclick="extendZone('+i+')" title="'+(f?'Etendre aux pages suivantes':'Extend to next pages')+'">p.'+tp+' &#9654;</span> ';
+if(canFwd)html+='<span class="zbtn zfwd" onclick="extendZone('+i+')" title="'+(f?'Étendre aux pages suivantes':'Extend to next pages')+'">p.'+tp+' &#9654;</span> ';
 html+='<span class="zbtn zdel" onclick="rmz('+i+')" title="'+(f?'Supprimer':'Delete')+'">&#10005;</span>';
 html+='</span>';
 return html}).join('');
 const active=ez.filter(z=>z.a||(pg>=z.fromPage&&pg<=z.toPage)).length;
-document.getElementById('zh').textContent=ez.length?(active+(uiLang==='fr'?' zone(s) active(s) sur cette page':' active zone(s) on this page')):(uiLang==='fr'?'Dessinez un rectangle sur les zones a ignorer':'Draw a rectangle on zones to exclude')}
+document.getElementById('zh').textContent=ez.length?(active+(uiLang==='fr'?' zone(s) active(s) sur cette page':' active zone(s) on this page')):(uiLang==='fr'?'Dessinez un rectangle sur les zones à ignorer':'Draw a rectangle on zones to exclude')}
 function extendZone(i){ez[i].toPage=tp;ez[i].a=false;rd()}
 function extendBack(i){ez[i].fromPage=1;ez[i].a=false;rd()}
 function rmz(i){ez.splice(i,1);rd()}
@@ -247,7 +282,12 @@ const sy=(e.clientY-r.top)*(cv.height/r.height);
 for(let i=ez.length-1;i>=0;i--){const z=ez[i];
 if(!(z.a||(pg>=z.fromPage&&pg<=z.toPage)))continue;
 const rx=z.x*cv.width,ry=z.y*cv.height,rw=z.w*cv.width;
-if(sx>=rx+rw-20&&sx<=rx+rw+2&&sy>=ry&&sy<=ry+20){ez.splice(i,1);rd();return}}
+if(sx>=rx+rw-20&&sx<=rx+rw+2&&sy>=ry&&sy<=ry+20){
+if(z.fromPage===z.toPage){ez.splice(i,1)}
+else if(pg===z.fromPage){z.fromPage++}
+else if(pg===z.toPage){z.toPage--}
+else{const z2={p:pg,x:z.x,y:z.y,w:z.w,h:z.h,a:false,fromPage:pg+1,toPage:z.toPage};z.toPage=pg-1;ez.push(z2)}
+rd();return}}
 dr=true;ds={x:sx/cv.width,y:sy/cv.height}});
 cv.addEventListener('mousemove',e=>{
 if(!dr||!ds)return;
@@ -257,8 +297,8 @@ const my=(e.clientY-r.top)*(cv.height/r.height)/cv.height;
 rd();
 const rx=ds.x*cv.width,ry=ds.y*cv.height;
 const rw=(mx-ds.x)*cv.width,rh=(my-ds.y)*cv.height;
-cx.fillStyle='rgba(220,38,38,0.15)';cx.fillRect(rx,ry,rw,rh);
-cx.strokeStyle='#dc2626';cx.lineWidth=1.5;cx.setLineDash([5,3]);cx.strokeRect(rx,ry,rw,rh);cx.setLineDash([])});
+const nc=zcolor(ez.length);cx.fillStyle=nc.fill;cx.fillRect(rx,ry,rw,rh);
+cx.strokeStyle=nc.stroke;cx.lineWidth=1.5;cx.setLineDash([5,3]);cx.strokeRect(rx,ry,rw,rh);cx.setLineDash([])});
 cv.addEventListener('mouseup',e=>{
 if(!dr||!ds)return;dr=false;
 const r=cv.getBoundingClientRect();
@@ -276,7 +316,7 @@ if(!currentJobId)return;
 try{await fetch('/cancel/'+currentJobId,{method:'POST'})}catch(e){}
 if(currentTimer)clearInterval(currentTimer);
 currentTimer=null;currentJobId=null;
-document.getElementById('st').textContent='Conversion annulee.';
+document.getElementById('st').textContent=uiLang==='fr'?'Conversion annulée.':'Conversion cancelled.';
 document.getElementById('st').className='stxt err';
 document.getElementById('cancelBtn').style.display='none';
 document.getElementById('cb').disabled=false;
@@ -290,13 +330,13 @@ const d=await r.json();if(d.error){st.textContent=d.error;st.className='stxt err
 const jid=d.job_id;currentJobId=jid;document.getElementById('cancelBtn').style.display='block';
 currentTimer=setInterval(async()=>{try{const s=await(await fetch('/status/'+jid)).json();
 bf.style.width=(s.progress||0)+'%';st.textContent=s.message||'';st.className='stxt';
-if(s.status==='done'){clearInterval(currentTimer);currentTimer=null;bf.style.width='100%';st.textContent=uiLang==='fr'?'Conversion terminee !':'Conversion complete!';document.getElementById('cancelBtn').style.display='none';currentJobId=null;st.className='stxt ok';dl.href='/download/'+jid;dl.style.display='block';cb.disabled=false}
-else if(s.status==='error'){clearInterval(currentTimer);currentTimer=null;st.textContent=s.error||'Erreur';st.className='stxt err';cb.disabled=false;document.getElementById('cancelBtn').style.display='none';currentJobId=null}
+if(s.status==='done'){clearInterval(currentTimer);currentTimer=null;bf.style.width='100%';st.textContent=uiLang==='fr'?'Conversion terminée !':'Conversion complete!';document.getElementById('cancelBtn').style.display='none';currentJobId=null;st.className='stxt ok';dl.href='/download/'+jid;dl.style.display='block';cb.disabled=false}
+else if(s.status==='error'){clearInterval(currentTimer);currentTimer=null;st.textContent=s.error||(uiLang==='fr'?'Erreur':'Error');st.className='stxt err';cb.disabled=false;document.getElementById('cancelBtn').style.display='none';currentJobId=null}
 }catch(e){clearInterval(currentTimer);currentTimer=null;st.textContent=uiLang==='fr'?'Connexion perdue':'Connection lost';st.className='stxt err';cb.disabled=false}},2000);
-}catch(e){st.textContent='Erreur: '+e.message;st.className='stxt err';cb.disabled=false}}
+}catch(e){st.textContent=(uiLang==='fr'?'Erreur: ':'Error: ')+e.message;st.className='stxt err';cb.disabled=false}}
 
 const TR={
-fr:{title:'Convertisseur PDF',sel:'Selectionnez votre fichier PDF',drop:'Glissez votre PDF ici ou <b>cliquez pour parcourir</b>',lang:'Langue du document :',langhelp:'pour la reconnaissance du texte',prev:'Apercu - tracez les zones a ignorer',conv:'\u2705 Convertir en Excel',cancel:'Annuler',dl:'\ud83d\udce5 Telecharger le fichier Excel',clear:'\ud83d\uddd1 Effacer les zones',hint:'Dessinez un rectangle sur les zones a ignorer',zones:' zone(s) active(s) sur cette page',prep:'Preparation...'},
+fr:{title:'Convertisseur PDF',sel:'Sélectionnez votre fichier PDF',drop:'Glissez votre PDF ici ou <b>cliquez pour parcourir</b>',lang:'Langue du document :',langhelp:'pour la reconnaissance du texte',prev:'Aperçu - tracez les zones à ignorer',conv:'\u2705 Convertir en Excel',cancel:'Annuler',dl:'\ud83d\udce5 Télécharger le fichier Excel',clear:'\ud83d\uddd1 Effacer les zones',hint:'Dessinez un rectangle sur les zones à ignorer',zones:' zone(s) active(s) sur cette page',prep:'Préparation...'},
 en:{title:'PDF Converter',sel:'Select your PDF file',drop:'Drag your PDF here or <b>click to browse</b>',lang:'Document language:',langhelp:'for text recognition',prev:'Preview - draw zones to exclude',conv:'\u2705 Convert to Excel',cancel:'Cancel',dl:'\ud83d\udce5 Download Excel file',clear:'\ud83d\uddd1 Clear zones',hint:'Draw a rectangle on zones to exclude',zones:' active zone(s) on this page',prep:'Preparing...'}
 };
 let uiLang=localStorage.getItem('pdfxlsx_lang')||'fr';
@@ -317,7 +357,7 @@ const dlb=document.getElementById('dl');if(dlb)dlb.innerHTML=t.dl;
 const cl=document.getElementById('t_clear');if(cl)cl.innerHTML=t.clear;
 const zh=document.getElementById('zh');if(zh&&!ez.length)zh.textContent=t.hint;
 if(typeof rd==='function'&&typeof ez!=='undefined')try{rd()}catch(e){}
-const of=document.getElementById('opt_fr');if(of)of.textContent=l==='fr'?'Francais':'French';
+const of=document.getElementById('opt_fr');if(of)of.textContent=l==='fr'?'Français':'French';
 const oe=document.getElementById('opt_en');if(oe)oe.textContent=l==='fr'?'Anglais':'English';
 }
 setLang(uiLang);
@@ -701,8 +741,7 @@ def looks_like_header(text: str) -> bool:
     if ("date" in t and "libell" in t) or ("débit" in t or "debit" in t) and ("solde" in t):
         return True
     # Filter "Ancien Solde" / "Nouveau Solde" info lines
-    if "ancien solde" in t or "nouveau solde" in t or "créditeur" in t or "crediteur" in t:
-        return True
+    # Note: "Ancien Solde" lines are kept as data rows (initial balance)
     # Filter page footers (URLs, page numbers like "1/54")
     if "https://" in t or "http://" in t:
         return True
@@ -1059,7 +1098,7 @@ def cancel(job_id: str):
         job = JOBS.get(job_id)
     if not job:
         return jsonify({"ok": False}), 404
-    set_job(job_id, status="error", error="Annule par l'utilisateur.", message="Conversion annulee.")
+    set_job(job_id, status="error", error="Annule par l'utilisateur.", message="Conversion annulée.")
     return jsonify({"ok": True})
 
 @app.get("/download/<job_id>")
