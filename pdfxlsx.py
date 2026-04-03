@@ -801,6 +801,13 @@ def normalize_row(cells: Dict[str, str]) -> Dict[str, str]:
     for key in list(cells.keys()):
         cells[key] = safe_excel_text(cells.get(key, ""))
 
+    # Smart alignment: if first column has text without dates/amounts
+    # and second column is empty, the text was likely misaligned → shift right
+    if cells["date_op"] and not cells["libelle"]:
+        if not DATE_RE.search(cells["date_op"]) and not AMOUNT_RE.search(cells["date_op"]):
+            cells["libelle"] = cells["date_op"]
+            cells["date_op"] = ""
+
     # Date opération contient aussi le libellé (ex: "02/01/2023 COMMISSIONS")
     if cells["date_op"]:
         m = DATE_RE.match(cells["date_op"])
