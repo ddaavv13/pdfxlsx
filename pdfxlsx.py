@@ -114,6 +114,13 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#e8f0f8;min-heigh
 .hbar.detected{background:#eff6ff;border-color:#bfdbfe}
 .hbar-btn:disabled{opacity:0.35;cursor:not-allowed;pointer-events:none}
 .hbar-wait{font-size:12px;font-style:italic}.detecting .hbar-wait{color:#be123c;font-size:13px;font-weight:600;font-style:normal}.detected .hbar-wait{color:#6b7280}
+.cbar{border:1px solid #fed7aa;border-radius:8px;padding:8px 12px;margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:#fff7ed}
+.cbar-btn{padding:3px 10px;border:1px solid #fdba74;border-radius:6px;background:#fff;font-size:11px;cursor:pointer;color:#ea580c}
+.cbar-btn:hover{background:#fff7ed}
+.cbar-btn.active{background:#fed7aa;border-color:#ea580c;font-weight:700}
+.cbar-btn:disabled{opacity:0.35;cursor:not-allowed;pointer-events:none}
+.cbar-info{font-size:12px;color:#ea580c;display:flex;gap:4px;flex-wrap:wrap;align-items:center}
+.ccol{background:#ffedd5;color:#ea580c;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600}
 .zone-bar{display:flex;align-items:center;justify-content:space-between;margin-top:10px;gap:10px}
 .clear-btn{padding:5px 12px;border:1px solid #ddd;border-radius:6px;background:#fff;font-size:12px;cursor:pointer;color:#666}
 .clear-btn:hover{background:#fef2f2;border-color:#fca5a5;color:#dc2626}
@@ -178,6 +185,11 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#e8f0f8;min-heigh
 <span class="hbar-cols" id="hbarCols"></span>
 <div id="hbarBtns" style="margin-left:auto;display:flex;gap:4px"><button class="hbar-btn" onclick="redetectHeader()" id="t_hsauto">Auto</button><button class="hbar-btn" onclick="moveHeader()" id="t_hsmove">Déplacer</button></div>
 </div>
+<div id="colBar" class="cbar" style="display:none">
+<span style="font-size:16px;color:#ea580c">&#9475;</span>
+<span class="cbar-info" id="colBarInfo"></span>
+<div id="colBarBtns" style="margin-left:auto;display:flex;gap:4px"><button class="cbar-btn" onclick="autoColLines()" id="t_colauto">Auto</button><button class="cbar-btn" onclick="moveColLines()" id="t_colmove2">Déplacer</button><button class="cbar-btn" onclick="addColLine()" id="t_coladd">+ Ligne</button><button class="cbar-btn" onclick="removeColLineMode()" id="t_colrm">- Ligne</button></div>
+</div>
 <div class="prev-wrap"><canvas id="cv"></canvas></div>
 <div class="pnav">
 <button onclick="cp(-1)">&laquo;</button>
@@ -231,7 +243,7 @@ document.getElementById('t_hsmove').disabled=true;document.getElementById('t_hsa
 document.getElementById('hbarCols').innerHTML='<span class="hbar-wait">'+(uiLang==='fr'?'Détection des en-têtes de colonnes...':'Detecting column headers...')+'</span>';lockUI(true);
 try{const r=await fetch('/auto_detect_header/'+fid+'/1');const d=await r.json();
 if(d.columns&&d.columns.length>=3){
-detectedCols=d.columns;detectedPos=d.positions;headerLineY=d.y;headerPage=pg;
+detectedCols=d.columns;detectedPos=d.positions;headerLineY=d.y;headerPage=pg;pageWidthPts=d.page_width||0;
 lockUI(false);showHeaderResult()}
 else{document.getElementById('hbarCols').innerHTML='<span class="hbar-wait">'+(uiLang==='fr'?'Non détecté - cliquez sur la ligne d\'en-tête':'Not detected - click on the header row')+'</span>';headerMode=true;lockUI(false);}
 }catch(e){document.getElementById('hbarCols').innerHTML='<span class="hbar-wait">Erreur</span>'}}
@@ -239,9 +251,11 @@ function showHeaderResult(){
 document.getElementById('headerBar').style.display='flex';document.getElementById('headerBar').className='hbar detected';
 document.getElementById('t_hsmove').disabled=false;document.getElementById('t_hsauto').disabled=false;
 document.getElementById('hbarCols').innerHTML=detectedCols.map(c=>'<span class="hcol">'+c+'</span>').join('');
-headerMode=false;rd()}
+headerMode=false;
+if(detectedPos.length>0&&pageWidthPts>0){colLines=detectedPos.map(x=>x/pageWidthPts);updateColBar()}
+rd()}
 function moveHeader(){
-headerMode=false;movingHeader=true;lockUI(true);
+headerMode=false;movingHeader=true;exitColMode();lockUI(true);
 document.getElementById('cv').style.pointerEvents='auto';
 document.getElementById('cv').style.opacity='1';
 document.getElementById('hbarCols').innerHTML='<span class="hbar-wait">'+(uiLang==='fr'?'Glissez la ligne bleue vers l\'en-tête':'Drag the blue line to the header')+'</span>';
@@ -251,10 +265,11 @@ cv.onmousedown=startDragHeader;cv.onmousemove=dragHeader;cv.onmouseup=endDragHea
 let draggingHeader=false;let movingHeader=false;
 function startDragHeader(e){draggingHeader=true}
 function dragHeader(e){
-if(!draggingHeader||!pimg)return;
+if(!pimg)return;
 const r=cv.getBoundingClientRect();
 const y=(e.clientY-r.top)*(cv.height/r.height);
-headerLineY=y/cv.height;
+if(draggingHeader){headerLineY=y/cv.height;previewHeaderY=null}
+else{previewHeaderY=y/cv.height}
 rd()}
 function endDragHeader(e){
 if(!draggingHeader)return;
@@ -268,19 +283,20 @@ document.getElementById('hbarCols').innerHTML='<span class="hbar-wait">'+(uiLang
 clickHeader(headerLineY).then(()=>{
 // Restore normal canvas handlers
 restoreCanvasHandlers()})}
-function restoreCanvasHandlers(){movingHeader=false;dr=false;ds=null;
+function restoreCanvasHandlers(){movingHeader=false;previewHeaderY=null;dr=false;ds=null;
 cv.onmousedown=null;cv.onmousemove=null;cv.onmouseup=null;
 cv.style.cursor='crosshair';
 lockUI(false);
 }
 function redetectHeader(){
-detectedCols=[];detectedPos=[];headerLineY=null;headerPage=1;
+detectedCols=[];detectedPos=[];headerLineY=null;headerPage=1;colLines=[];exitColMode();document.getElementById('colBar').style.display='none';
 document.getElementById('headerBar').className='hbar detecting';lockUI(true);autoDetectHeader()}
 function redoHeader_legacy(){headerMode=true;detectedCols=[];detectedPos=[];headerLineY=null;headerPage=1;lockUI(false);
 document.getElementById('hbarCols').innerHTML='<span class="hbar-wait">'+(uiLang==='fr'?'Cliquez sur la ligne d\'en-tête du tableau':'Click on the table header row')+'</span>';rd()}
 function cp(d){const p=pg+d;if(p<1||p>tp)return;pg=p;lp()}
 let ez=[];let dr=false;let ds=null;
 let headerMode=false;let uiLocked=false;let detectedCols=[];let detectedPos=[];let headerLineY=null;let headerPage=1;
+let colLines=[];let pageWidthPts=0;let colEditMode=null;let draggingColIdx=-1;let previewColX=null;let previewHeaderY=null;
 const ZCOLORS=[
 {fill:'rgba(220,38,38,0.20)',stroke:'#dc2626',tag:'#fee2e2',text:'#b91c1c'},
 {fill:'rgba(37,99,235,0.20)',stroke:'#2563eb',tag:'#dbeafe',text:'#1d4ed8'},
@@ -327,6 +343,9 @@ cx.strokeStyle=zc.stroke;cx.lineWidth=1.5;cx.strokeRect(rx,ry,rw,rh);
 cx.fillStyle=zc.stroke;cx.font='11px system-ui';
 cx.fillText(z.fromPage===z.toPage?'Page '+z.fromPage:(uiLang==='fr'?'Pages ':'Pages ')+z.fromPage+'-'+z.toPage,rx+4,ry+13);
 cx.font='bold 15px system-ui';cx.fillText('\u00d7',rx+rw-14,ry+14)}}
+if(colLines.length>0){for(let ci=0;ci<colLines.length;ci++){const clx=colLines[ci]*cv.width;if(ci>0){cx.strokeStyle=draggingColIdx===ci?'rgba(234,88,12,0.8)':'rgba(234,88,12,0.45)';cx.lineWidth=draggingColIdx===ci?2.5:1.5;cx.setLineDash([4,4]);cx.beginPath();cx.moveTo(clx,0);cx.lineTo(clx,cv.height);cx.stroke();cx.setLineDash([])}if(detectedCols[ci]){cx.fillStyle='rgba(234,88,12,0.85)';cx.font='bold 11px system-ui';const lbl=detectedCols[ci];const tw=cx.measureText(lbl).width;const nextX=ci<colLines.length-1?colLines[ci+1]*cv.width:clx+60;const midX=(clx+nextX)/2;const lx=ci===0?clx+4:midX-tw/2;cx.fillRect(lx-2,2,tw+4,14);cx.fillStyle='#fff';cx.fillText(lbl,lx,13)}}}
+if(previewColX!==null){const px=previewColX*cv.width;cx.strokeStyle='rgba(234,88,12,0.5)';cx.lineWidth=2;cx.setLineDash([4,4]);cx.beginPath();cx.moveTo(px,0);cx.lineTo(px,cv.height);cx.stroke();cx.setLineDash([])}
+if(previewHeaderY!==null){const py=previewHeaderY*cv.height;cx.strokeStyle='rgba(37,99,235,0.5)';cx.lineWidth=2;cx.setLineDash([4,4]);cx.beginPath();cx.moveTo(0,py);cx.lineTo(cv.width,py);cx.stroke();cx.setLineDash([])}
 updateZL()}
 function updateZL(){
 const el=document.getElementById('zl');
@@ -349,6 +368,7 @@ function extendBack(i){ez[i].fromPage=1;ez[i].a=false;rd()}
 function rmz(i){ez.splice(i,1);rd()}
 function clearZones(){ez=[];rd()}
 cv.addEventListener('mousedown',e=>{
+if(colEditMode){handleColDown(e);return}
 const r=cv.getBoundingClientRect();
 const sx=(e.clientX-r.left)*(cv.width/r.width);
 const sy=(e.clientY-r.top)*(cv.height/r.height);
@@ -363,6 +383,7 @@ else{const z2={p:pg,x:z.x,y:z.y,w:z.w,h:z.h,a:false,fromPage:pg+1,toPage:z.toPag
 rd();return}}
 dr=true;ds={x:sx/cv.width,y:sy/cv.height}});
 cv.addEventListener('mousemove',e=>{
+if(colEditMode){handleColMove(e);return}
 if(!dr||!ds||uiLocked||movingHeader)return;
 const r=cv.getBoundingClientRect();
 const mx=(e.clientX-r.left)*(cv.width/r.width)/cv.width;
@@ -373,6 +394,7 @@ const rw=(mx-ds.x)*cv.width,rh=(my-ds.y)*cv.height;
 const nc=zcolor(ez.length);cx.fillStyle=nc.fill;cx.fillRect(rx,ry,rw,rh);
 cx.strokeStyle=nc.stroke;cx.lineWidth=1.5;cx.setLineDash([5,3]);cx.strokeRect(rx,ry,rw,rh);cx.setLineDash([])});
 cv.addEventListener('mouseup',e=>{
+if(colEditMode){handleColUp(e);return}
 if(!dr||!ds||movingHeader)return;dr=false;
 const r=cv.getBoundingClientRect();
 const ex2=(e.clientX-r.left)*(cv.width/r.width)/cv.width;
@@ -398,7 +420,7 @@ async function go(){
 const cb=document.getElementById('cb'),bf=document.getElementById('bf'),st=document.getElementById('st'),dl=document.getElementById('dl'),pb=document.getElementById('progBox');
 cb.disabled=true;pb.style.display='block';dl.style.display='none';bf.style.width='0%';st.textContent=uiLang==='fr'?'Envoi...':'Sending...';st.className='stxt';
 try{const r=await fetch('/start',{method:'POST',headers:{'Content-Type':'application/json'},
-body:JSON.stringify({file_id:fid,lang:document.getElementById('lg').value,exclude_zones:ez,header_cols:detectedCols,header_positions:detectedPos.map(z=>({p:z.fromPage,x:z.x,y:z.y,w:z.w,h:z.h,a:z.toPage>=tp,fromPage:z.fromPage,toPage:z.toPage}))})});
+body:JSON.stringify({file_id:fid,lang:document.getElementById('lg').value,exclude_zones:ez,header_cols:detectedCols,header_positions:colLines.length>0&&pageWidthPts>0?colLines.map(x=>x*pageWidthPts):detectedPos})});
 const d=await r.json();if(d.error){st.textContent=d.error;st.className='stxt err';cb.disabled=false;return}
 const jid=d.job_id;currentJobId=jid;document.getElementById('cancelBtn').style.display='block';
 currentTimer=setInterval(async()=>{try{const s=await(await fetch('/status/'+jid)).json();
@@ -409,8 +431,8 @@ else if(s.status==='error'){clearInterval(currentTimer);currentTimer=null;st.tex
 }catch(e){st.textContent=(uiLang==='fr'?'Erreur: ':'Error: ')+e.message;st.className='stxt err';cb.disabled=false}}
 
 const TR={
-fr:{title:'Convertisseur PDF → XLSX',sel:'Sélectionnez votre fichier PDF',drop:'Glissez votre PDF ici ou <b>cliquez pour parcourir</b>',lang:'Langue du document :',langhelp:'pour la reconnaissance du texte',prev:'Aperçu - tracez les zones à ignorer',conv:'\u2705 Convertir en Excel',cancel:'Annuler',dl:'\ud83d\udce5 Télécharger le fichier Excel',clear:'\ud83d\uddd1 Effacer les zones',hint:'Dessinez un rectangle sur les zones à ignorer',zones:' zone(s) active(s) sur cette page',prep:'Préparation...'},
-en:{title:'PDF → XLSX Converter',sel:'Select your PDF file',drop:'Drag your PDF here or <b>click to browse</b>',lang:'Document language:',langhelp:'for text recognition',prev:'Preview - draw zones to exclude',conv:'\u2705 Convert to Excel',cancel:'Cancel',dl:'\ud83d\udce5 Download Excel file',clear:'\ud83d\uddd1 Clear zones',hint:'Draw a rectangle on zones to exclude',zones:' active zone(s) on this page',prep:'Preparing...'}
+fr:{title:'Convertisseur PDF → XLSX',sel:'Sélectionnez votre fichier PDF',drop:'Glissez votre PDF ici ou <b>cliquez pour parcourir</b>',lang:'Langue du document :',langhelp:'pour la reconnaissance du texte',prev:'Aperçu - tracez les zones à ignorer',conv:'\u2705 Convertir en Excel',cancel:'Annuler',dl:'\ud83d\udce5 Télécharger le fichier Excel',clear:'\ud83d\uddd1 Effacer les zones',hint:'Dessinez un rectangle sur les zones à ignorer',zones:' zone(s) active(s) sur cette page',prep:'Préparation...',colauto:'Auto',colmove:'Déplacer',coladd:'+ Ligne',colrm:'- Ligne'},
+en:{title:'PDF → XLSX Converter',sel:'Select your PDF file',drop:'Drag your PDF here or <b>click to browse</b>',lang:'Document language:',langhelp:'for text recognition',prev:'Preview - draw zones to exclude',conv:'\u2705 Convert to Excel',cancel:'Cancel',dl:'\ud83d\udce5 Download Excel file',clear:'\ud83d\uddd1 Clear zones',hint:'Draw a rectangle on zones to exclude',zones:' active zone(s) on this page',prep:'Preparing...',colauto:'Auto',colmove:'Move',coladd:'+ Line',colrm:'- Line'}
 };
 let uiLang=localStorage.getItem('pdfxlsx_lang')||'fr';
 function setLang(l){
@@ -432,6 +454,11 @@ const zh=document.getElementById('zh');if(zh&&!ez.length)zh.textContent=t.hint;
 if(typeof rd==='function'&&typeof ez!=='undefined')try{rd()}catch(e){}
 const of=document.getElementById('opt_fr');if(of)of.textContent=l==='fr'?'Français':'French';
 const oe=document.getElementById('opt_en');if(oe)oe.textContent=l==='fr'?'Anglais':'English';
+const ca2=document.getElementById('t_colauto');if(ca2)ca2.textContent=t.colauto;
+const cm2=document.getElementById('t_colmove2');if(cm2)cm2.textContent=t.colmove;
+const cad=document.getElementById('t_coladd');if(cad)cad.textContent=t.coladd;
+const crm=document.getElementById('t_colrm');if(crm)crm.textContent=t.colrm;
+if(colLines.length>0)updateColBar();
 }
 setLang(uiLang);
 
@@ -439,7 +466,7 @@ async function clickHeader(relY){
 try{const r=await fetch('/detect_header_at/'+fid+'/'+pg,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({y:relY})});
 const d=await r.json();
 if(d.columns&&d.columns.length>=3){
-detectedCols=d.columns;detectedPos=d.positions;headerLineY=relY;headerMode=false;
+detectedCols=d.columns;detectedPos=d.positions;headerLineY=relY;headerMode=false;pageWidthPts=d.page_width||0;
 lockUI(false);showHeaderResult()}
 else{showHeaderResult()}}
 catch(e){alert('Error: '+e.message)}}
@@ -458,7 +485,61 @@ document.getElementById('dz').style.opacity=lock?'0.6':'1';
 document.getElementById('fi').disabled=lock;
 var hm=document.getElementById('t_hsmove');if(hm)hm.disabled=lock;
 var ha=document.getElementById('t_hsauto');if(ha)ha.disabled=lock;
+document.querySelectorAll('.cbar-btn').forEach(b=>b.disabled=lock);
 }
+function updateColBar(){
+document.getElementById('colBar').style.display='flex';
+const n=colLines.length;
+let info=n+' '+(uiLang==='fr'?'colonnes':'columns');
+if(colEditMode==='move')info=uiLang==='fr'?'Glissez les lignes vertes':'Drag the green lines';
+else if(colEditMode==='add')info=uiLang==='fr'?'Cliquez pour ajouter une ligne':'Click to add a line';
+else if(colEditMode==='remove')info=uiLang==='fr'?'Cliquez sur une ligne à supprimer':'Click a line to remove';
+document.getElementById('colBarInfo').innerHTML=colEditMode?'<span style="font-style:italic">'+info+'</span>':detectedCols.map(c=>'<span class="ccol">'+c+'</span>').join('')+' <span style="font-size:11px;color:#6b7280">('+n+')</span>';
+document.querySelectorAll('.cbar-btn').forEach(b=>b.classList.remove('active'));
+if(colEditMode==='move')document.getElementById('t_colmove2').classList.add('active');
+if(colEditMode==='add')document.getElementById('t_coladd').classList.add('active');
+if(colEditMode==='remove')document.getElementById('t_colrm').classList.add('active');
+}
+function exitColMode(){colEditMode=null;draggingColIdx=-1;previewColX=null;cv.style.cursor='crosshair';updateColBar();rd()}
+function autoColLines(){
+exitColMode();
+if(detectedPos.length>0&&pageWidthPts>0){colLines=detectedPos.map(x=>x/pageWidthPts)}
+updateColBar();rd()}
+function moveColLines(){
+if(colEditMode==='move'){exitColMode();return}
+colEditMode='move';cv.style.cursor='col-resize';updateColBar()}
+function addColLine(){
+if(colEditMode==='add'){exitColMode();return}
+colEditMode='add';cv.style.cursor='copy';updateColBar()}
+function removeColLineMode(){
+if(colEditMode==='remove'){exitColMode();return}
+colEditMode='remove';cv.style.cursor='pointer';updateColBar()}
+function findNearCol(e){
+const r=cv.getBoundingClientRect();
+const mx=(e.clientX-r.left)*(cv.width/r.width);
+let best=-1,bestD=12;
+for(let i=1;i<colLines.length;i++){const d=Math.abs(mx-colLines[i]*cv.width);if(d<bestD){bestD=d;best=i}}
+return best}
+function handleColDown(e){
+if(movingHeader)return;
+if(colEditMode==='move'){const idx=findNearCol(e);if(idx>=0){draggingColIdx=idx;rd()}}
+else if(colEditMode==='add'){
+const r=cv.getBoundingClientRect();const mx=(e.clientX-r.left)*(cv.width/r.width)/cv.width;
+let ins=colLines.length;
+for(let i=0;i<colLines.length;i++){if(mx<colLines[i]){ins=i;break}}
+colLines.splice(ins,0,mx);detectedCols.splice(ins,0,'Col '+(ins+1));
+exitColMode();updateColBar();rd()}
+else if(colEditMode==='remove'){const idx=findNearCol(e);if(idx>=0&&colLines.length>2){colLines.splice(idx,1);detectedCols.splice(idx,1);exitColMode();updateColBar();rd()}}}
+function handleColMove(e){
+if(colEditMode==='move'&&draggingColIdx>=0){
+const r=cv.getBoundingClientRect();const mx=(e.clientX-r.left)*(cv.width/r.width)/cv.width;
+const minX=draggingColIdx>0?colLines[draggingColIdx-1]+0.01:0.005;
+const maxX=draggingColIdx<colLines.length-1?colLines[draggingColIdx+1]-0.01:0.995;
+colLines[draggingColIdx]=Math.max(minX,Math.min(maxX,mx));rd()}
+else if(colEditMode==='move'){const idx=findNearCol(e);cv.style.cursor=idx>=0?'col-resize':'default'}
+else if(colEditMode==='add'){const r=cv.getBoundingClientRect();previewColX=(e.clientX-r.left)*(cv.width/r.width)/cv.width;rd()}
+else if(colEditMode==='remove'){const idx=findNearCol(e);cv.style.cursor=idx>=0&&colLines.length>2?'pointer':'not-allowed'}}
+function handleColUp(e){if(draggingColIdx>=0){draggingColIdx=-1;exitColMode();updateColBar();rd()}}
 </script>
 </body></html>
 """
@@ -1011,16 +1092,13 @@ def extract_rows(pdf_bytes: bytes, lang: str, job_id: str, ocr_mode: str, exclud
             n = len(col_names)
             for w in line["words"]:
                 x = w["xc"]
-                best_col = col_names[0]
-                best_dist = float('inf')
+                best_col = col_names[-1]
                 for i in range(n):
                     left = (col_pos[i-1]+col_pos[i])/2 if i>0 else 0
-                    right = (col_pos[i]+col_pos[i+1])/2 if i+1<n else 10000
-                    mid = (left+right)/2
-                    dist = abs(x-mid)
-                    if dist < best_dist:
-                        best_dist = dist
+                    right = (col_pos[i]+col_pos[i+1])/2 if i+1<n else float('inf')
+                    if left <= x < right:
                         best_col = col_names[i]
+                        break
                 cells_g[best_col] = safe_excel_text((cells_g.get(best_col,"") + " " + w["text"]).strip())
             # Skip if empty
             if not any(v.strip() for v in cells_g.values()):
@@ -1233,6 +1311,7 @@ def auto_detect_header(file_id: str, page: int):
         doc = fitz.open(info["path"])
         pg = doc[page - 1]
         page_h = pg.rect.height
+        page_w = pg.rect.width
         pix = pg.get_pixmap(dpi=200, alpha=False)
         img_np = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.height, pix.width, 3)
         reader = get_easyocr_reader("fr")
@@ -1245,7 +1324,7 @@ def auto_detect_header(file_id: str, page: int):
             if not text.strip() or conf < 0.15: continue
             x0, x1 = bbox[0][0]*scale, bbox[2][0]*scale
             yc = ((bbox[0][1]+bbox[2][1])/2)*scale
-            words.append({"text":text,"x0":x0,"xc":(x0+x1)/2,"yc":yc})
+            words.append({"text":text,"x0":x0,"x1":x1,"xc":(x0+x1)/2,"yc":yc})
         words.sort(key=lambda w:(w["yc"],w["x0"]))
         # Group into lines
         lines = []
@@ -1298,7 +1377,7 @@ def auto_detect_header(file_id: str, page: int):
                     break
 
         if best:
-            return jsonify({"columns":[w["text"] for w in best],"positions":[w["x0"] for w in best],"y":best_y/page_h})
+            return jsonify({"columns":[w["text"] for w in best],"positions":[w["x0"] for w in best],"y":best_y/page_h,"page_width":page_w})
     except Exception as e:
         print(f"  Auto-detect error: {e}", flush=True)
     return jsonify({"columns":[],"positions":[],"y":0})
@@ -1315,6 +1394,7 @@ def detect_header_at(file_id: str, page: int):
         doc = fitz.open(info["path"])
         pg = doc[page - 1]
         page_h = pg.rect.height
+        page_w = pg.rect.width
         target_y = rel_y * page_h
         tol = page_h * 0.01
         pix = pg.get_pixmap(dpi=200, alpha=False)
@@ -1330,11 +1410,12 @@ def detect_header_at(file_id: str, page: int):
             if abs(yc - target_y) <= tol:
 
                 x0 = bbox[0][0]*scale
-                hw.append({"text":text,"x0":x0})
+                x1 = bbox[2][0]*scale
+                hw.append({"text":text,"x0":x0,"x1":x1})
         hw.sort(key=lambda w:w["x0"])
-        return jsonify({"columns":[w["text"] for w in hw],"positions":[w["x0"] for w in hw]})
+        return jsonify({"columns":[w["text"] for w in hw],"positions":[w["x0"] for w in hw],"page_width":page_w})
     except Exception as e:
-        return jsonify({"columns":[],"positions":[]})
+        return jsonify({"columns":[],"positions":[],"page_width":0})
 
 @app.post("/start")
 def start():
@@ -1388,7 +1469,7 @@ def start():
     thread = threading.Thread(
         target=process_job,
         args=(job_id, pdf_bytes, filename, lang, ocr_mode),
-        kwargs={"exclude_zones": exclude_zones},
+        kwargs={"exclude_zones": exclude_zones, "header_cols": header_cols if request.is_json else None, "header_positions": header_positions if request.is_json else None},
         daemon=True
     )
     thread.start()
