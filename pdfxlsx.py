@@ -107,7 +107,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#e8f0f8;display:f
 .pnav button:disabled{opacity:0.35;cursor:not-allowed;pointer-events:none}
 .pnav span{font-size:13px;color:#555}
 .hbar{border:1px solid #bfdbfe;transition:background 0.3s;border-radius:8px;padding:8px 12px;margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.hbar-icon{font-size:16px;color:#2563eb}
+.hbar-icon{flex-shrink:0}
 .hbar-cols{display:flex;gap:4px;flex-wrap:wrap}
 .hcol{background:#dbeafe;color:#1d4ed8;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600}
 .hbar-btn{padding:3px 10px;border:1px solid #93c5fd;border-radius:6px;background:#fff;font-size:11px;cursor:pointer;color:#1d4ed8;margin-left:auto}
@@ -126,8 +126,9 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#e8f0f8;display:f
 .cbar-btn:disabled{opacity:0.35;cursor:not-allowed;pointer-events:none}
 .cbar-info{font-size:12px;color:#ea580c;display:flex;gap:4px;flex-wrap:wrap;align-items:center}
 .ccol{background:#ffedd5;color:#ea580c;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600}
-.zone-bar{display:flex;align-items:center;justify-content:space-between;margin-top:10px;gap:10px}
-.clear-btn{padding:5px 12px;border:1px solid #ddd;border-radius:6px;background:#fff;font-size:12px;cursor:pointer;color:#666}
+.zbar{border:1px solid #e2e8f0;border-radius:8px;padding:6px 12px;margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:#f8fafc;min-height:28px}
+.zbar-hint{font-size:12px;color:#94a3b8;font-style:italic}
+.clear-btn{padding:3px 10px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;font-size:11px;cursor:pointer;color:#64748b;margin-left:auto}
 .clear-btn:hover{background:#fef2f2;border-color:#fca5a5;color:#dc2626}
 .clear-btn:disabled{opacity:0.35;cursor:not-allowed;pointer-events:none}
 .zone-hint{font-size:12px;color:#999;margin-top:8px}
@@ -184,15 +185,20 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#e8f0f8;display:f
 <div id="prevSec">
 <div class="stitle">&#128065; <span id="t_prev">Aperçu</span></div>
 <div id="headerBar" class="hbar" style="display:none">
-<span class="hbar-icon">&#9776;</span>
+<svg class="hbar-icon" width="18" height="14" viewBox="0 0 18 14"><rect x="0" y="0" width="18" height="4" rx="1" fill="#2563eb"/><rect x="0" y="5" width="18" height="2" rx="0.5" fill="#2563eb" opacity="0.3"/><rect x="0" y="8.5" width="18" height="2" rx="0.5" fill="#2563eb" opacity="0.3"/><rect x="0" y="12" width="18" height="2" rx="0.5" fill="#2563eb" opacity="0.3"/></svg>
 <span id="hdrTabs" style="display:flex;gap:4px"></span>
 <span class="hbar-cols" id="hbarCols"></span>
-<div id="hbarBtns" style="margin-left:auto;display:flex;gap:4px"><button class="hbar-btn" onclick="redetectHeader()" id="t_hsauto">Auto</button><button class="hbar-btn" onclick="moveHeader()" id="t_hsmove">Déplacer</button><button class="hbar-btn" onclick="addHeader()" id="t_hsadd" title="Ajouter un en-tête">&#10133;</button><button class="hbar-btn" onclick="removeHeader()" id="t_hsrm" disabled title="Supprimer cet en-tête">&#10134;</button></div>
+<div id="hbarBtns" style="margin-left:auto;display:flex;gap:4px"><button class="hbar-btn" onclick="redetectHeader()" id="t_hsauto">Auto</button><button class="hbar-btn" onclick="moveHeader()" id="t_hsmove">Déplacer</button><button class="hbar-btn" onclick="addHeader()" id="t_hsadd" title="Ajouter un en-tête">+</button><button class="hbar-btn" onclick="removeHeader()" id="t_hsrm" disabled title="Supprimer cet en-tête">&minus;</button></div>
 </div>
 <div id="colBar" class="cbar" style="display:none">
-<span style="font-size:16px;color:#ea580c">&#9475;</span>
+<svg width="18" height="14" viewBox="0 0 18 14"><rect x="0" y="0" width="4" height="14" rx="1" fill="#ea580c" opacity="0.3"/><rect x="7" y="0" width="4" height="14" rx="1" fill="#ea580c" opacity="0.3"/><rect x="14" y="0" width="4" height="14" rx="1" fill="#ea580c" opacity="0.3"/></svg>
 <span class="cbar-info" id="colBarInfo"></span>
-<div id="colBarBtns" style="margin-left:auto;display:flex;gap:4px"><button class="cbar-btn" onclick="autoColLines()" id="t_colauto">Auto</button><button class="cbar-btn" onclick="moveColLines()" id="t_colmove2">Déplacer</button><button class="cbar-btn" onclick="addColLine()" id="t_coladd" title="Ajouter une ligne">&#10133;</button><button class="cbar-btn" onclick="removeColLineMode()" id="t_colrm" title="Supprimer une ligne">&#10134;</button></div>
+<div id="colBarBtns" style="margin-left:auto;display:flex;gap:4px"><button class="cbar-btn" onclick="autoColLines()" id="t_colauto">Auto</button><button class="cbar-btn" onclick="moveColLines()" id="t_colmove2">Déplacer</button><button class="cbar-btn" onclick="addColLine()" id="t_coladd" title="Ajouter une ligne">+</button><button class="cbar-btn" onclick="removeColLineMode()" id="t_colrm" title="Supprimer une ligne">&minus;</button></div>
+</div>
+<div id="zoneBar" class="zbar">
+<span class="zbar-hint" id="zh">Dessinez un rectangle sur les zones à ignorer</span>
+<span id="zl" style="display:flex;gap:4px;flex-wrap:wrap"></span>
+<button class="clear-btn" onclick="clearZones()" id="t_clear" style="display:none">&#128465;</button>
 </div>
 <div class="prev-wrap"><canvas id="cv"></canvas></div>
 <div class="pnav">
@@ -200,12 +206,6 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#e8f0f8;display:f
 <span id="pi">Page 1/1</span>
 <button onclick="cp(1)">&raquo;</button>
 </div>
-<div class="zone-bar" style="justify-content:space-between">
-
-<button class="clear-btn" onclick="clearZones()" id="t_clear">&#128465; Effacer les zones</button>
-</div>
-<div class="zone-hint" id="zh">Dessinez un rectangle sur les zones à ignorer (en-tetes, logos, pieds de page)</div>
-<div class="zone-list" id="zl"></div>
 
 </div>
 <button class="cbtn" id="cb" onclick="mainAction()" disabled style="display:none">&#9989; Convertir en Excel</button>
@@ -362,18 +362,14 @@ function updateZL(){
 const el=document.getElementById('zl');
 el.innerHTML=ez.map((z,i)=>{
 const f=uiLang==='fr';
-const range=z.fromPage===z.toPage?'page '+z.fromPage:'pages '+z.fromPage+(f?' à ':' to ')+z.toPage;
-const canBack=z.fromPage>1;
-const canFwd=(z.toPage||z.fromPage)<tp;
-const zc=zcolor(i);let html='<span class="zone-tag" style="background:'+zc.tag+';color:'+zc.text+'">';
-if(canBack)html+='<span class="zbtn zback" onclick="extendBack('+i+')" title="'+(f?'Étendre aux pages précédentes':'Extend to previous pages')+'">&#9664; p.1</span> ';
-html+='<b>Zone '+(i+1)+'</b> <span class="zrange">('+range+')</span> ';
-if(canFwd)html+='<span class="zbtn zfwd" onclick="extendZone('+i+')" title="'+(f?'Étendre aux pages suivantes':'Extend to next pages')+'">p.'+tp+' &#9654;</span> ';
-html+='<span class="zbtn zdel" onclick="rmz('+i+')" title="'+(f?'Supprimer':'Delete')+'">&#10005;</span>';
-html+='</span>';
-return html}).join('');
-const active=ez.filter(z=>z.a||(pg>=z.fromPage&&pg<=z.toPage)).length;
-document.getElementById('zh').textContent=ez.length?(active+(uiLang==='fr'?' zone(s) active(s) sur cette page':' active zone(s) on this page')):(uiLang==='fr'?'Dessinez un rectangle sur les zones à ignorer':'Draw a rectangle on zones to exclude')}
+const range=z.fromPage===z.toPage?'p.'+z.fromPage:'p.'+z.fromPage+'-'+z.toPage;
+const zc=zcolor(i);
+return '<span class="zone-tag" style="background:'+zc.tag+';color:'+zc.text+'"><b>Z'+(i+1)+'</b> ('+range+') <span class="zbtn zdel" onclick="rmz('+i+')" title="'+(f?'Supprimer':'Delete')+'">&#10005;</span></span>';
+}).join('');
+const zh=document.getElementById('zh');
+const cl=document.getElementById('t_clear');
+if(ez.length){zh.style.display='none';cl.style.display=''}
+else{zh.style.display='';cl.style.display='none';zh.textContent=uiLang==='fr'?'Dessinez un rectangle sur les zones à ignorer':'Draw a rectangle on zones to exclude'}}
 function extendZone(i){ez[i].toPage=tp;ez[i].a=false;rd()}
 function extendBack(i){ez[i].fromPage=1;ez[i].a=false;rd()}
 function rmz(i){ez.splice(i,1);rd()}
