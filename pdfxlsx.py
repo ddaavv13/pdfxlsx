@@ -183,7 +183,6 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#e8f0f8;display:f
 <span style="font-size:11px;color:#999;margin-left:4px" id="t_langhelp">pour la reconnaissance du texte</span>
 </div>
 <div id="prevSec">
-<div class="stitle">&#128065; <span id="t_prev">Aperçu</span></div>
 <div id="headerBar" class="hbar" style="display:none">
 <svg class="hbar-icon" width="18" height="14" viewBox="0 0 18 14"><rect x="0" y="0" width="18" height="4" rx="1" fill="#2563eb"/><rect x="0" y="5" width="18" height="2" rx="0.5" fill="#2563eb" opacity="0.3"/><rect x="0" y="8.5" width="18" height="2" rx="0.5" fill="#2563eb" opacity="0.3"/><rect x="0" y="12" width="18" height="2" rx="0.5" fill="#2563eb" opacity="0.3"/></svg>
 <span id="hdrTabs" style="display:flex;gap:4px"></span>
@@ -200,6 +199,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#e8f0f8;display:f
 <span id="zl" style="display:flex;gap:4px;flex-wrap:wrap"></span>
 <button class="clear-btn" onclick="clearZones()" id="t_clear" style="display:none">&#128465;</button>
 </div>
+<div class="stitle">&#128065; <span id="t_prev">Aperçu</span></div>
 <div class="prev-wrap"><canvas id="cv"></canvas></div>
 <div class="pnav">
 <button onclick="cp(-1)">&laquo;</button>
@@ -363,9 +363,15 @@ const el=document.getElementById('zl');
 el.innerHTML=ez.map((z,i)=>{
 const f=uiLang==='fr';
 const range=z.fromPage===z.toPage?'p.'+z.fromPage:'p.'+z.fromPage+'-'+z.toPage;
+const canBack=z.fromPage>1;
+const canFwd=(z.toPage||z.fromPage)<tp;
 const zc=zcolor(i);
-return '<span class="zone-tag" style="background:'+zc.tag+';color:'+zc.text+'"><b>Z'+(i+1)+'</b> ('+range+') <span class="zbtn zdel" onclick="rmz('+i+')" title="'+(f?'Supprimer':'Delete')+'">&#10005;</span></span>';
-}).join('');
+let h='<span class="zone-tag" style="background:'+zc.tag+';color:'+zc.text+'">';
+if(canBack)h+='<span class="zbtn zback" onclick="extendBack('+i+')" title="'+(f?'Étendre':'Extend')+'">&#9664;</span> ';
+h+='<b>Z'+(i+1)+'</b> ('+range+') ';
+if(canFwd)h+='<span class="zbtn zfwd" onclick="extendZone('+i+')" title="'+(f?'Étendre':'Extend')+'">&#9654;</span> ';
+h+='<span class="zbtn zdel" onclick="rmz('+i+')" title="'+(f?'Supprimer':'Delete')+'">&#10005;</span></span>';
+return h}).join('');
 const zh=document.getElementById('zh');
 const cl=document.getElementById('t_clear');
 if(ez.length){zh.style.display='none';cl.style.display=''}
@@ -453,8 +459,8 @@ else if(s.status==='error'){clearInterval(currentTimer);currentTimer=null;st.tex
 }catch(e){st.textContent=(uiLang==='fr'?'Erreur: ':'Error: ')+e.message;st.className='stxt err';setBtnState('convert');lockUI(false)}}
 
 const TR={
-fr:{title:'Convertisseur PDF → XLSX',sel:'Sélectionnez votre fichier PDF',drop:'Glissez votre PDF ici ou <b>cliquez pour parcourir</b>',lang:'Langue du document :',langhelp:'pour la reconnaissance du texte',prev:'Aperçu - tracez les zones à ignorer',conv:'\u2705 Convertir en Excel',cancel:'Annuler',dl:'\ud83d\udce5 Télécharger le fichier Excel',clear:'\ud83d\uddd1 Effacer les zones',hint:'Dessinez un rectangle sur les zones à ignorer',zones:' zone(s) active(s) sur cette page',prep:'Préparation...',colauto:'Auto',colmove:'Déplacer',},
-en:{title:'PDF → XLSX Converter',sel:'Select your PDF file',drop:'Drag your PDF here or <b>click to browse</b>',lang:'Document language:',langhelp:'for text recognition',prev:'Preview - draw zones to exclude',conv:'\u2705 Convert to Excel',cancel:'Cancel',dl:'\ud83d\udce5 Download Excel file',clear:'\ud83d\uddd1 Clear zones',hint:'Draw a rectangle on zones to exclude',zones:' active zone(s) on this page',prep:'Preparing...',colauto:'Auto',colmove:'Move',}
+fr:{title:'Convertisseur PDF → XLSX',sel:'Sélectionnez votre fichier PDF',drop:'Glissez votre PDF ici ou <b>cliquez pour parcourir</b>',lang:'Langue du document :',langhelp:'pour la reconnaissance du texte',prev:'Aperçu',conv:'\u2705 Convertir en Excel',cancel:'Annuler',dl:'\ud83d\udce5 Télécharger le fichier Excel',clear:'\ud83d\uddd1 Effacer les zones',hint:'Dessinez un rectangle sur les zones à ignorer',zones:' zone(s) active(s) sur cette page',prep:'Préparation...',colauto:'Auto',colmove:'Déplacer',},
+en:{title:'PDF → XLSX Converter',sel:'Select your PDF file',drop:'Drag your PDF here or <b>click to browse</b>',lang:'Document language:',langhelp:'for text recognition',prev:'Preview',conv:'\u2705 Convert to Excel',cancel:'Cancel',dl:'\ud83d\udce5 Download Excel file',clear:'\ud83d\uddd1 Clear zones',hint:'Draw a rectangle on zones to exclude',zones:' active zone(s) on this page',prep:'Preparing...',colauto:'Auto',colmove:'Move',}
 };
 let uiLang=localStorage.getItem('pdfxlsx_lang')||'fr';
 function setLang(l){
@@ -470,7 +476,6 @@ const lh=document.getElementById('t_langhelp');if(lh)lh.textContent=t.langhelp;
 const p=document.getElementById('t_prev');if(p)p.textContent=t.prev;
 const cv=document.getElementById('cb');if(cv)cv.innerHTML=t.conv;
 setBtnState(btnState,dlUrl);
-const cl=document.getElementById('t_clear');if(cl)cl.innerHTML=t.clear;
 const zh=document.getElementById('zh');if(zh&&!ez.length)zh.textContent=t.hint;
 if(typeof rd==='function'&&typeof ez!=='undefined')try{rd()}catch(e){}
 const of=document.getElementById('opt_fr');if(of)of.textContent=l==='fr'?'Français':'French';
