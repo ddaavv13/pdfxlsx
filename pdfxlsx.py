@@ -487,6 +487,7 @@ const of=document.getElementById('opt_fr');if(of)of.textContent=l==='fr'?'Franç
 const oe=document.getElementById('opt_en');if(oe)oe.textContent=l==='fr'?'Anglais':'English';
 const ca2=document.getElementById('t_colauto');if(ca2)ca2.textContent=t.colauto;
 const cm2=document.getElementById('t_colmove2');if(cm2)cm2.textContent=t.colmove;
+const hm2=document.getElementById('t_hsmove');if(hm2)hm2.textContent=t.colmove;
 if(curHdr()&&curHdr().colLines.length>0)updateColBar();
 updateHdrTabs();
 }
