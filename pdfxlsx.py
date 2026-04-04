@@ -947,8 +947,11 @@ def extract_rows(pdf_bytes: bytes, lang: str, job_id: str, ocr_mode: str, exclud
             words = line["words"]
             if len(words) < 3:
                 continue
-            has_num = any(DATE_RE.search(w["text"]) or AMOUNT_RE.search(w["text"]) or re.match(r"^[\d.,/]+$", w["text"].strip()) for w in words)
-            if has_num:
+            has_date_or_amount = any(DATE_RE.search(w["text"]) or AMOUNT_RE.search(w["text"]) for w in words)
+            if has_date_or_amount:
+                continue
+            decimal_count = sum(1 for w in words if re.match(r"^[\d][\d .,]*[\d]$", w["text"].strip()) and len(w["text"].strip()) > 3)
+            if decimal_count >= len(words) * 0.5:
                 continue
             ltxt = " ".join(w["text"] for w in words).lower()
             if "http" in ltxt:
@@ -967,6 +970,16 @@ def extract_rows(pdf_bytes: bytes, lang: str, job_id: str, ocr_mode: str, exclud
             if score > best_score:
                 best_score = score
                 best_line = line
+
+        # Strategy 2: find first data row and take line above
+        if not best_line and len(all_lines) >= 2:
+            for idx in range(1, min(40, len(all_lines))):
+                words_l = all_lines[idx]["words"]
+                if len(words_l) < 3: continue
+                num_count = sum(1 for w in words_l if re.match(r"^\d+[.,]\d+$", w["text"].strip().replace(" ","")))
+                if num_count >= len(words_l) * 0.5:
+                    best_line = all_lines[idx - 1]
+                    break
 
         if best_line:
             generic_mode = True
@@ -1250,8 +1263,11 @@ def auto_detect_header(file_id: str, page: int):
         best_y = 0
         for line in lines:
             if len(line)<3: continue
-            has_num = any(DATE_RE.search(w["text"]) or AMOUNT_RE.search(w["text"]) or re.match(r"^[\d.,/]+$",w["text"].strip()) for w in line)
-            if has_num: continue
+            has_date_or_amount = any(DATE_RE.search(w["text"]) or AMOUNT_RE.search(w["text"]) for w in line)
+            if has_date_or_amount: continue
+            # Reject lines where most words are decimal numbers (data rows)
+            decimal_count = sum(1 for w in line if re.match(r"^[\d][\d .,]*[\d]$", w["text"].strip()) and len(w["text"].strip()) > 3)
+            if decimal_count >= len(line) * 0.5: continue
             ltxt = " ".join(w["text"] for w in line).lower()
             if "http" in ltxt: continue
             # Header words are typically short (< 20 chars avg)
@@ -1269,6 +1285,18 @@ def auto_detect_header(file_id: str, page: int):
                 best_score=score
                 best=line
                 best_y=statistics.median(w["yc"] for w in line)
+        # Strategy 2: if no header found, find first data row and take the line above
+        if not best and len(lines) >= 2:
+            for idx in range(1, len(lines)):
+                words_l = lines[idx]
+                if len(words_l) < 3: continue
+                num_count = sum(1 for w in words_l if re.match(r"^\d+[.,]\d+$", w["text"].strip().replace(" ","")))
+                if num_count >= len(words_l) * 0.5:
+                    # This is likely a data row — take the line above as header
+                    best = lines[idx - 1]
+                    best_y = sum(w["yc"] for w in best) / len(best)
+                    break
+
         if best:
             return jsonify({"columns":[w["text"] for w in best],"positions":[w["x0"] for w in best],"y":best_y/page_h})
     except Exception as e:
