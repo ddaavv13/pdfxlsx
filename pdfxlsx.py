@@ -435,7 +435,7 @@ if(btnCooldown)return;
 btnCooldown=true;setTimeout(()=>{btnCooldown=false},1000);
 if(btnState==='convert')go();
 else if(btnState==='cancel')cancelJob();
-else if(btnState==='download'){window.location.href=dlUrl;setBtnState('convert')}
+else if(btnState==='download'){window.location.href=dlUrl;const cb=document.getElementById('cb');cb.disabled=true;cb.style.opacity='0.5';setTimeout(()=>{setBtnState('convert')},1000)}
 }
 async function cancelJob(){
 if(!currentJobId)return;
