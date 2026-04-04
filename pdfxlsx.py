@@ -74,17 +74,19 @@ HTML_FORM = r"""
 <title>Convertisseur PDF</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:system-ui,-apple-system,sans-serif;background:#e8f0f8;min-height:100vh;display:flex;flex-direction:column;align-items:center}
-.header{width:100%;background:linear-gradient(135deg,#005EA5 0%,#00A3E0 100%);color:#fff;padding:20px 0;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.15);flex-shrink:0}
+html,body{margin:0;min-height:100vh}
+body{font-family:system-ui,-apple-system,sans-serif;background:#005EA5;display:flex;flex-direction:column;align-items:center}
+.header{width:100%;background:transparent;color:#fff;padding:20px 0;text-align:center;flex-shrink:0;overflow:hidden}
 .header h1{font-size:22px;font-weight:700;letter-spacing:-0.5px}
 .header .sub{font-size:13px;opacity:0.85;margin-top:4px}
 .header-inner{text-align:center;padding:8px 0;position:relative}
-.lang-switch{position:absolute;left:16px;top:50%;transform:translateY(-50%);display:flex;gap:6px}
+.lang-switch{position:absolute;right:16px;top:50%;transform:translateY(-50%);display:flex;gap:6px}
+.logo{position:absolute;left:16px;top:50%;transform:translateY(-50%)}
 .flag{font-size:22px;cursor:pointer;opacity:0.5;transition:opacity 0.2s}
 .flag:hover{opacity:0.8}
 .flag.active{opacity:1}
 
-.card{background:#fff;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,0.08);max-width:900px;width:95%;margin:24px auto 24px;padding:28px 32px}
+.card{background:rgba(255,255,255,0.92);border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,0.15);max-width:900px;width:95%;margin:24px auto 24px;padding:28px 32px}
 .stitle{font-size:15px;font-weight:700;color:#005EA5;margin:20px 0 10px}
 .stitle:first-child{margin-top:0}
 .drop-zone{border:2px dashed #b0c4de;border-radius:12px;padding:18px 20px;text-align:center;cursor:pointer;transition:all 0.2s;background:#f8fafc}
@@ -158,9 +160,9 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#e8f0f8;min-heigh
 <body>
 <div class="header">
 <div class="header-inner">
-
+<div class="logo"><img src="/logo.png" alt="Logo" style="height:40px;opacity:0.85"></div>
 <div class="title-wrap"><h1 id="title">Convertisseur PDF</h1></div>
-<div class="lang-switch"><span class="flag" onclick="setLang('en')" id="flagEn" title="English">&#127468;&#127463;</span><span class="flag active" onclick="setLang('fr')" id="flagFr" title="Français">&#127467;&#127479;</span></div>
+<div class="lang-switch"><span class="flag active" onclick="setLang('fr')" id="flagFr" title="Français">&#127467;&#127479;</span><span class="flag" onclick="setLang('en')" id="flagEn" title="English">&#127468;&#127463;</span></div>
 </div>
 <div class="card">
 <div class="stitle">&#128196; <span id="t_sel">Sélectionnez votre fichier PDF</span></div>
@@ -170,7 +172,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#e8f0f8;min-heigh
 <div class="fn" id="fn"></div>
 <input type="file" id="fi" accept=".pdf,application/pdf">
 </div>
-<div class="lang-row">
+<div class="lang-row" id="langRow" style="display:none">
 <label id="t_lang">Langue du document :</label>
 <select id="lg">
 <option value="fr" selected id="opt_fr">Français</option>
@@ -204,7 +206,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#e8f0f8;min-heigh
 <div class="zone-list" id="zl"></div>
 
 </div>
-<button class="cbtn" id="cb" onclick="go()" disabled>&#9989; Convertir en Excel</button>
+<button class="cbtn" id="cb" onclick="go()" disabled style="display:none">&#9989; Convertir en Excel</button>
 <div id="progBox">
 <div class="bwrap"><div class="bfill" id="bf"></div></div>
 <div class="stxt" id="st">Préparation...</div>
@@ -227,9 +229,12 @@ document.getElementById('cb').disabled=true;
 const fd=new FormData();fd.append('pdf',f);
 try{const r=await fetch('/upload',{method:'POST',body:fd});const d=await r.json();
 if(d.error){alert(d.error);return}
-fid=d.file_id;tp=d.total_pages;pg=1;ez=[];
+fid=d.file_id;tp=d.total_pages;pg=1;ez=[];detectedCols=[];detectedPos=[];headerLineY=null;headerPage=1;colLines=[];exitColMode();document.getElementById('colBar').style.display='none';
 document.getElementById('prevSec').style.display='block';
-document.getElementById('cb').disabled=false;lp();
+document.getElementById('langRow').style.display='';
+document.getElementById('cb').style.display='';document.getElementById('cb').disabled=false;
+document.getElementById('dl').style.display='none';document.getElementById('progBox').style.display='none';
+lp();
 }catch(e){alert((uiLang==='fr'?'Erreur: ':'Error: ')+e.message)}}
 async function lp(){
 const img=new Image();
@@ -603,7 +608,7 @@ def easyocr_page_words(page: fitz.Page, page_number: int, lang: str, dpi: int = 
     img_np = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.height, pix.width, 3)
 
     reader = get_easyocr_reader(lang)
-    results = reader.readtext(img_np)
+    results = reader.readtext(img_np, text_threshold=0.3, low_text=0.3, min_size=5)
 
     # Scale factor: OCR coords are in pixels at given DPI, PDF coords are at 72 DPI
     scale = 72.0 / dpi
@@ -1252,6 +1257,10 @@ UPLOADS: Dict[str, Dict[str, Any]] = {}
 def index():
     return render_template_string(HTML_FORM)
 
+@app.get("/logo.png")
+def logo():
+    return send_file(os.path.join(os.path.dirname(os.path.abspath(__file__)), "logo.png"), mimetype="image/png")
+
 @app.post("/upload")
 def upload():
     """Pre-upload PDF for preview. Returns file_id + total_pages."""
@@ -1315,7 +1324,7 @@ def auto_detect_header(file_id: str, page: int):
         pix = pg.get_pixmap(dpi=200, alpha=False)
         img_np = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.height, pix.width, 3)
         reader = get_easyocr_reader("fr")
-        results = reader.readtext(img_np)
+        results = reader.readtext(img_np, text_threshold=0.3, low_text=0.3, min_size=5)
         scale = 72.0 / 200
         doc.close()
         # Build words with positions
@@ -1326,6 +1335,20 @@ def auto_detect_header(file_id: str, page: int):
             yc = ((bbox[0][1]+bbox[2][1])/2)*scale
             words.append({"text":text,"x0":x0,"x1":x1,"xc":(x0+x1)/2,"yc":yc})
         words.sort(key=lambda w:(w["yc"],w["x0"]))
+        # Remove stray "%" or "8" (OCR reads % as 8) that follow a number
+        cleaned = []
+        for i, w in enumerate(words):
+            txt = w["text"].strip()
+            if txt in ('8', '%', ';') and i > 0 and abs(w["yc"]-words[i-1]["yc"]) <= 8:
+                prev = words[i-1]["text"].strip().replace(' ','')
+                if re.match(r'^\d+', prev):
+                    continue  # skip stray % symbol
+            cleaned.append(w)
+        words = cleaned
+        # Also clean "8" suffix from merged words like "90 8" -> "90"
+        for w in words:
+            w["text"] = re.sub(r'\s+8$', '', w["text"])
+            w["text"] = re.sub(r'\s+;$', '', w["text"])
         # Group into lines
         lines = []
         cur = []
@@ -1400,7 +1423,7 @@ def detect_header_at(file_id: str, page: int):
         pix = pg.get_pixmap(dpi=200, alpha=False)
         img_np = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.height, pix.width, 3)
         reader = get_easyocr_reader("fr")
-        results = reader.readtext(img_np)
+        results = reader.readtext(img_np, text_threshold=0.3, low_text=0.3, min_size=5)
         scale = 72.0 / 200
         doc.close()
         hw = []
@@ -1408,11 +1431,23 @@ def detect_header_at(file_id: str, page: int):
             if not text.strip() or conf < 0.15: continue
             yc = ((bbox[0][1]+bbox[2][1])/2)*scale
             if abs(yc - target_y) <= tol:
-
                 x0 = bbox[0][0]*scale
                 x1 = bbox[2][0]*scale
-                hw.append({"text":text,"x0":x0,"x1":x1})
+                hw.append({"text":text,"x0":x0,"x1":x1,"yc":yc})
         hw.sort(key=lambda w:w["x0"])
+        # Remove stray "%" or "8" (OCR reads % as 8) that follow a number
+        cleaned_hw = []
+        for i, w in enumerate(hw):
+            txt = w["text"].strip()
+            if txt in ('8', '%', ';') and i > 0:
+                prev = hw[i-1]["text"].strip().replace(' ','')
+                if re.match(r'^\d+', prev):
+                    continue
+            cleaned_hw.append(w)
+        hw = cleaned_hw
+        for w in hw:
+            w["text"] = re.sub(r'\s+8$', '', w["text"])
+            w["text"] = re.sub(r'\s+;$', '', w["text"])
         return jsonify({"columns":[w["text"] for w in hw],"positions":[w["x0"] for w in hw],"page_width":page_w})
     except Exception as e:
         return jsonify({"columns":[],"positions":[],"page_width":0})
