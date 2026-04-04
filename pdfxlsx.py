@@ -76,7 +76,7 @@ HTML_FORM = r"""
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{margin:0;min-height:100vh;overflow-x:hidden}
 body{font-family:system-ui,-apple-system,sans-serif;background:#e8f0f8;display:flex;flex-direction:column;align-items:center}
-.header{width:100%;background:#005EA5;color:#fff;padding:20px 0;text-align:center;flex-shrink:0;overflow:hidden;box-sizing:border-box}
+.header{width:100%;background:#005EA5;color:#fff;padding:20px 0 40px;text-align:center;flex-shrink:0;overflow:hidden;box-sizing:border-box;margin-bottom:-20px}
 .header h1{font-size:22px;font-weight:700;letter-spacing:-0.5px}
 .header .sub{font-size:13px;opacity:0.85;margin-top:4px}
 .header-inner{text-align:center;padding:8px 16px;position:relative;max-width:900px;margin:0 auto;box-sizing:border-box}
