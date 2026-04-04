@@ -144,11 +144,13 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#e8f0f8;display:f
 .zfwd:hover{background:#bfdbfe}
 .zdel{background:#fee2e2;color:#dc2626;border:1px solid #fca5a5}
 .zdel:hover{background:#fecaca}
-.cbtn{margin-top:20px;padding:14px 32px;border:0;border-radius:10px;background:linear-gradient(135deg,#005EA5,#00A3E0);color:#fff;font-size:16px;font-weight:700;cursor:pointer;width:100%;transition:transform 0.1s}
-.cbtn:hover{transform:scale(1.01)}
+.cbtn{margin-top:20px;padding:14px 32px;border:0;border-radius:10px;background:#dbeafe;color:#1d4ed8;font-size:16px;font-weight:700;cursor:pointer;width:100%;transition:transform 0.1s}
+.cbtn:hover{transform:scale(1.01);background:#bfdbfe}
 .cbtn:disabled{opacity:0.5;cursor:not-allowed;transform:none}
-.cbtn.cancel{background:linear-gradient(135deg,#dc2626,#ef4444)}
-.cbtn.download{background:linear-gradient(135deg,#16a34a,#22c55e)}
+.cbtn.cancel{background:#fee2e2;color:#dc2626}
+.cbtn.cancel:hover{background:#fecaca}
+.cbtn.download{background:#dcfce7;color:#16a34a}
+.cbtn.download:hover{background:#bbf7d0}
 #progBox{display:none;margin-top:20px}
 .bwrap{width:100%;height:10px;background:#e2e8f0;border-radius:8px;overflow:hidden}
 .bfill{width:0%;height:100%;background:linear-gradient(90deg,#005EA5,#00A3E0);transition:width 0.4s;border-radius:8px}
