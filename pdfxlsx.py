@@ -581,7 +581,7 @@ function handleColUp(e){if(draggingColIdx>=0){draggingColIdx=-1;exitColMode();up
 function updateHdrTabs(){
 const el=document.getElementById('hdrTabs');
 el.innerHTML=headers.map((h,i)=>'<span class="htab'+(i===activeHdr?' active':'')+'" onclick="switchHdr('+i+')">'+(uiLang==='fr'?'En-tête ':'Header ')+(i+1)+'</span>').join('');
-if(headers.length<=1)el.innerHTML=''}
+if(headers.length<=1){el.innerHTML='';el.style.display='none'}else{el.style.display='flex'}}
 function switchHdr(i){activeHdr=i;exitColMode();showHeaderResult()}
 function addHeader(){
 headerMode=false;movingHeader=false;addingHeader=true;exitColMode();
