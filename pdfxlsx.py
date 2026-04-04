@@ -519,6 +519,8 @@ var ha=document.getElementById('t_hsauto');if(ha)ha.disabled=lock;
 var had=document.getElementById('t_hsadd');if(had)had.disabled=lock;
 var hrm=document.getElementById('t_hsrm');if(hrm)hrm.disabled=lock||headers.length<=1;
 document.querySelectorAll('.cbar-btn').forEach(b=>b.disabled=lock);
+document.getElementById('zoneBar').style.pointerEvents=lock?'none':'auto';
+document.getElementById('zoneBar').style.opacity=lock?'0.6':'1';
 }
 function updateColBar(){
 const h=curHdr();if(!h)return;
