@@ -429,7 +429,10 @@ if(state==='convert'){cb.className='cbtn';cb.disabled=false;cb.innerHTML=(uiLang
 else if(state==='cancel'){cb.className='cbtn cancel';cb.disabled=false;cb.innerHTML=(uiLang==='fr'?'&#10060; Annuler':'&#10060; Cancel')}
 else if(state==='download'){cb.className='cbtn download';cb.disabled=false;cb.innerHTML=(uiLang==='fr'?'&#128229; Télécharger le fichier Excel':'&#128229; Download Excel file');dlUrl=url||''}
 }
+let btnCooldown=false;
 function mainAction(){
+if(btnCooldown)return;
+btnCooldown=true;setTimeout(()=>{btnCooldown=false},1000);
 if(btnState==='convert')go();
 else if(btnState==='cancel')cancelJob();
 else if(btnState==='download'){window.location.href=dlUrl;setBtnState('convert')}
