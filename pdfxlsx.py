@@ -437,7 +437,7 @@ if(btnCooldown)return;
 btnCooldown=true;setTimeout(()=>{btnCooldown=false},1000);
 if(btnState==='convert')go();
 else if(btnState==='cancel')cancelJob();
-else if(btnState==='download'){window.location.href=dlUrl;const cb=document.getElementById('cb');cb.disabled=true;cb.style.opacity='0.5';setTimeout(()=>{setBtnState('convert')},1000)}
+else if(btnState==='download'){window.location.href=dlUrl;const cb=document.getElementById('cb');cb.className='cbtn';cb.disabled=true;cb.innerHTML='&#10003;';cb.style.background='#e2e8f0';cb.style.color='#94a3b8';setTimeout(()=>{cb.style.background='';cb.style.color='';setBtnState('convert')},1500)}
 }
 async function cancelJob(){
 if(!currentJobId)return;
